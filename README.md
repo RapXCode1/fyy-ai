@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
+  <a href="https://fyy-ai.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-fyy--ai.vercel.app-00C7B7?logo=vercel&logoColor=white" alt="Live Demo" /></a>
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Groq_API-LPU_Inference-f97316?logo=data:image/svg+xml;base64," alt="Groq" />
   <img src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white" alt="Capacitor" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
@@ -203,14 +203,16 @@ FYY-AI ships as a hybrid Android app using **Capacitor 8**.
    npx cap open android
    ```
 
-### Production Mode (Self-hosted)
+### Production Mode (Vercel Deployment)
 
-1. Deploy your Next.js app to a VPS or any server (e.g., Railway, Render, your own VPS).
-2. Update `capacitor.config.ts` with your domain:
+1. Deploy your Next.js app to **Vercel** (recommended) or any other server.
+2. The `capacitor.config.ts` already points to `https://fyy-ai.vercel.app` — update if your domain changes:
    ```ts
-   url: 'https://your-domain.com',
+   url: 'https://fyy-ai.vercel.app',
    ```
 3. Build and sign the APK from Android Studio.
+
+> The Android app will always load the latest web version from Vercel — no APK update needed for UI/feature changes.
 
 ---
 

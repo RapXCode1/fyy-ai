@@ -45,7 +45,7 @@ export default function DeveloperPage() {
       category: "DevOps",
       items: [
         { name: "Docker", percentage: 85 },
-        { name: "Linux / VPS", percentage: 90 },
+        { name: "Vercel", percentage: 95 },
         { name: "AWS", percentage: 80 },
         { name: "GitHub Actions", percentage: 88 },
         { name: "CI/CD", percentage: 85 }
@@ -58,7 +58,7 @@ export default function DeveloperPage() {
       name: "FYY-AI",
       description: "Advanced AI intelligence platform with multimodal Groq models, voice I/O, and image analysis",
       tech: ["Next.js", "Groq API", "TypeScript", "Tailwind CSS"],
-      link: "https://github.com/RapXcode1/fyy-ai",
+      link: "https://fyy-ai.vercel.app",
       stats: "4 Models, 50+ Features",
     },
     {

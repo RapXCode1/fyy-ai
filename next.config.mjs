@@ -1,15 +1,23 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  typescript: {
-    // ignoreBuildErrors: true, // DANGEROUS: Disabled for production safety
-  },
+  swcMinify: true,
   images: {
-    unoptimized: true,
+    formats: ['image/webp'],
+    domains: ['fyy-ai.vercel.app'],
   },
-  // Enable experimental features if needed
   experimental: {
-    // Add experimental features here if required
+    appDir: true,
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.plugins.push(new (require('webpack-bundle-analyzer')).BundleAnalyzerPlugin({
+        analyzerMode: 'static',
+        openAnalyzer: false,
+        reportFilename: '../bundles/client.html',
+      }));
+    }
+    return config;
   },
   env: {
     NEXT_PUBLIC_CLERK_JS: '/_clerk/js/clerk.js',
@@ -22,8 +30,8 @@ const nextConfig = {
         source: '/_clerk/js/clerk.js',
         destination: 'https://mutual-drum-35.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js',
       },
-    ]
+    ];
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

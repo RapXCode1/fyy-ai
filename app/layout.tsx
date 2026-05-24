@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import SpaceBackground from "@/components/space-background"
 import ThemeStyleProvider from "@/components/theme-style-provider"
@@ -66,6 +67,7 @@ export default function RootLayout({
             <SpaceBackground />
             <ClerkSecurityShield />
             {children}
+            <Analytics />
             <ServiceWorkerRegister />
           </ThemeProvider>
         </body>

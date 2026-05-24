@@ -15,12 +15,12 @@ const config: CapacitorConfig = {
     // url: 'http://10.0.2.2:3000',
     // cleartext: true
     //
-    // [2] MODE PRODUKSI (Self-hosted / VPS / Custom Domain):
-    // Masukkan domain website Next.js yang sudah kamu deploy ke server sendiri.
+    // [2] MODE PRODUKSI (Deploy Web & Publish APK):
+    // Masukkan domain website Next.js yang sudah dideploy ke Vercel/VPS.
     // Ini mengaktifkan update otomatis (tanpa perlu update APK) dan akses API 100% aman!
-    url: 'https://fyy-ai.rapxcode.dev',
+    url: 'https://fyy-ai.vercel.app',
     allowNavigation: [
-      'fyy-ai.rapxcode.dev',
+      'fyy-ai.vercel.app',
       '*.clerk.accounts.dev',
       'mutual-drum-35.clerk.accounts.dev',
       'accounts.google.com',
