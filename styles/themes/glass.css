@@ -1,0 +1,65 @@
+/* STYLE 2: GLASSMORPHISM (PREMIUM APPLE-STYLE) */
+
+.style-glass {
+  --background: #f0f2f5;
+  --foreground: #000000;
+  --card: rgba(255, 255, 255, 0.6);
+  --border: rgba(255, 255, 255, 0.8);
+  --primary: #0ea5e9;
+  --primary-rgb: 14, 165, 233;
+  --primary-foreground: #ffffff;
+  --theme-border-width: 1.5px;
+  --theme-blur: 12px;
+  --theme-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.05);
+  --radius: 24px;
+}
+
+.style-glass.dark, .dark .style-glass {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.12);
+  --theme-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+
+.style-glass .space-background {
+  display: block !important;
+}
+
+/* Hide space background in light mode if desired, or keep it subtle */
+.style-glass:not(.dark) .space-background {
+  opacity: 0.1;
+}
+
+.style-glass .chat-sidebar {
+  background-color: var(--card) !important;
+  border-right: 1px solid var(--border) !important;
+  backdrop-filter: blur(var(--theme-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--theme-blur)) !important;
+}
+
+.style-glass .chat-header {
+  background-color: var(--card);
+  border-bottom: 1px solid var(--border) !important;
+  backdrop-filter: blur(var(--theme-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--theme-blur)) !important;
+}
+
+.style-glass .message-bubble {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  backdrop-filter: blur(var(--theme-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--theme-blur)) !important;
+  box-shadow: var(--theme-shadow) !important;
+}
+
+.style-glass .message-bubble.user {
+  background-color: rgba(14, 165, 233, 0.4) !important;
+  border: 1px solid rgba(14, 165, 233, 0.6) !important;
+}
+
+.style-glass .theme-input {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  backdrop-filter: blur(10px) !important;
+}

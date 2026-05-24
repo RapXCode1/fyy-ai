@@ -1,0 +1,285 @@
+/* STYLE 3: NEOBRUTALISM (PREMIUM DESIGNER) */
+
+.style-neobrutalism {
+  --background: #f3f4f6;
+  --foreground: #000000;
+  --card: #ffffff;
+  --border: #000000;
+  --primary: #2563eb;
+  --primary-rgb: 37, 99, 235;
+  --secondary: #d946ef;
+  --accent: #facc15;
+  --theme-border-width: 3px;
+  --theme-shadow: 6px 6px 0px 0px #000;
+  --theme-blur: 0px;
+  --radius: 4px;
+}
+
+.style-neobrutalism.dark, .dark .style-neobrutalism {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #18181b;
+  --border: #ffffff;
+  --theme-shadow: 6px 6px 0px 0px #ffffff;
+}
+
+.style-neobrutalism .space-background {
+  display: none !important;
+}
+
+.style-neobrutalism .chat-sidebar {
+  background-color: var(--card);
+  border-right: 3px solid var(--border);
+}
+
+.style-neobrutalism .chat-header {
+  background-color: var(--card);
+  border-bottom: 3px solid var(--border);
+}
+
+/* --- Message Bubbles --- */
+.style-neobrutalism .message-bubble {
+  border: 3px solid var(--border) !important;
+  box-shadow: 4px 4px 0px 0px var(--border) !important;
+  border-radius: 4px !important;
+  margin: 12px 0 !important;
+  padding: 16px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .message-bubble {
+    border-width: 2px !important;
+    box-shadow: 2px 2px 0px 0px var(--border) !important;
+    margin: 8px 0 !important;
+    padding: 10px 12px !important;
+    font-size: 0.9rem !important;
+  }
+}
+
+.style-neobrutalism .message-bubble.user {
+  background-color: var(--primary) !important;
+  color: white !important;
+}
+
+/* --- General Button Styling --- */
+.style-neobrutalism button:not(.unstyled):not(.lucide) {
+  border: 3px solid var(--border) !important;
+  border-radius: 4px !important;
+  box-shadow: 3px 3px 0px 0px var(--border) !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+}
+
+/* Exclude suggestions / text pills from uppercase & extreme thickness */
+.style-neobrutalism .suggestion-card, 
+.style-neobrutalism .suggestion-pill,
+.style-neobrutalism button.suggestion-card,
+.style-neobrutalism button.suggestion-pill,
+.style-neobrutalism .chat-sidebar button {
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism button:not(.unstyled):not(.lucide) {
+    border-width: 2px !important;
+    box-shadow: 2px 2px 0px 0px var(--border) !important;
+    font-weight: 700 !important;
+    text-transform: none !important; /* Avoid uppercase overflow on small screens */
+    font-size: 0.85rem !important;
+  }
+}
+
+/* --- Theme Input Container --- */
+.style-neobrutalism .theme-input {
+  border: 3px solid var(--border) !important;
+  box-shadow: 4px 4px 0px 0px var(--border) !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .theme-input {
+    border-width: 2px !important;
+    box-shadow: 2px 2px 0px 0px var(--border) !important;
+    padding: 8px !important;
+  }
+}
+
+/* --- Chat Header Responsive Fixes --- */
+.style-neobrutalism .chat-header {
+  border-bottom: 3px solid var(--border) !important;
+  padding-top: calc(env(safe-area-inset-top) + 8px) !important;
+  padding-bottom: 8px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  margin-bottom: 4px !important;
+}
+
+@media (min-width: 640px) {
+  .style-neobrutalism .chat-header {
+    padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+    padding-bottom: 12px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+/* Standalone buttons in chat header (e.g. collapse sidebar) */
+.style-neobrutalism .chat-header button:not([data-panel-trigger] button) {
+  border: 2px solid var(--border) !important;
+  box-shadow: 2px 2px 0px 0px var(--border) !important;
+  margin: 0 4px !important;
+  border-radius: 4px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .chat-header button:not([data-panel-trigger] button) {
+    border-width: 1.5px !important;
+    box-shadow: 1.5px 1.5px 0px 0px var(--border) !important;
+    margin: 0 2px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+.style-neobrutalism .chat-header .flex.items-center.gap-0\.5,
+.style-neobrutalism .chat-header .flex.items-center.gap-1 {
+  gap: 10px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .chat-header .flex.items-center.gap-0\.5,
+  .style-neobrutalism .chat-header .flex.items-center.gap-1 {
+    gap: 4px !important;
+  }
+}
+
+/* Segmented Control Containers (AI Tools Group & Settings Group) */
+.style-neobrutalism [data-panel-trigger] {
+  border: 2px solid var(--border) !important;
+  box-shadow: 3px 3px 0px 0px var(--border) !important;
+  padding: 4px 8px !important;
+  gap: 6px !important;
+  border-radius: 8px !important;
+  background-color: var(--card) !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism [data-panel-trigger] {
+    border-width: 1.5px !important;
+    box-shadow: 2px 2px 0px 0px var(--border) !important;
+    padding: 2px 4px !important;
+    gap: 2px !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* Inner Buttons inside Segmented Control Containers - Strip double borders/shadows to prevent collision */
+.style-neobrutalism [data-panel-trigger] button,
+.style-neobrutalism .chat-header [data-panel-trigger] button {
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 1px !important;
+  border-radius: 6px !important;
+  text-transform: none !important;
+  font-weight: 700 !important;
+  padding: 6px 10px !important;
+}
+
+/* Accent border for active button states to give precise tactile feedback */
+.style-neobrutalism [data-panel-trigger] button.bg-primary,
+.style-neobrutalism [data-panel-trigger] button.bg-secondary,
+.style-neobrutalism [data-panel-trigger] button.bg-accent {
+  border: 1.5px solid var(--border) !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism [data-panel-trigger] button,
+  .style-neobrutalism .chat-header [data-panel-trigger] button {
+    padding: 5px 7px !important;
+    font-size: 0.8rem !important;
+    margin: 0 !important;
+    border-radius: 4px !important;
+  }
+  
+  .style-neobrutalism [data-panel-trigger] button.bg-primary,
+  .style-neobrutalism [data-panel-trigger] button.bg-secondary,
+  .style-neobrutalism [data-panel-trigger] button.bg-accent {
+    border-width: 1px !important;
+  }
+}
+
+/* --- Chat Sidebar Fixes --- */
+.style-neobrutalism .chat-sidebar .p-5 {
+  padding: 24px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .chat-sidebar .p-5 {
+    padding: 16px !important;
+  }
+}
+
+.style-neobrutalism .chat-sidebar .flex-1.overflow-y-auto {
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .chat-sidebar .flex-1.overflow-y-auto {
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+}
+
+.style-neobrutalism .chat-sidebar .group.relative {
+  border: 2px solid var(--border) !important;
+  box-shadow: 2px 2px 0px 0px var(--border) !important;
+  margin-bottom: 8px !important;
+  border-radius: 4px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .chat-sidebar .group.relative {
+    border-width: 1.5px !important;
+    box-shadow: 1.5px 1.5px 0px 0px var(--border) !important;
+    margin-bottom: 6px !important;
+  }
+}
+
+.style-neobrutalism .chat-sidebar .bg-primary\/10 {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.style-neobrutalism .grid.grid-cols-1.gap-2 {
+  gap: 12px !important;
+  padding: 8px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .grid.grid-cols-1.gap-2 {
+    gap: 8px !important;
+    padding: 4px !important;
+  }
+}
+
+.style-neobrutalism .grid.grid-cols-1.gap-2 button {
+  border: 2px solid var(--border) !important;
+  box-shadow: 3px 3px 0px 0px var(--border) !important;
+  margin-bottom: 4px !important;
+  border-radius: 4px !important;
+}
+
+@media (max-width: 640px) {
+  .style-neobrutalism .grid.grid-cols-1.gap-2 button {
+    border-width: 1.5px !important;
+    box-shadow: 1.5px 1.5px 0px 0px var(--border) !important;
+    margin-bottom: 2px !important;
+  }
+}

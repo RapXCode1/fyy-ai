@@ -1,0 +1,39 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @media (prefers-color-scheme: light) {
+      .background { fill: #0f172a; }
+      .f-text { fill: #06b6d4; }
+      .ai-text { fill: #8b5cf6; }
+      .accent { fill: #06b6d4; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .background { fill: #1e293b; }
+      .f-text { fill: #06b6d4; }
+      .ai-text { fill: #8b5cf6; }
+      .accent { fill: #06b6d4; }
+    }
+  </style>
+  <g clip-path="url(#clip0_f_ai)">
+    <rect class="background" width="180" height="180" rx="37" />
+    <g style="transform: scale(90%); transform-origin: center">
+  
+      <!-- F Text -->
+      <text x="90" y="93" text-anchor="middle" class="f-text" style="font-family: 'Inter', sans-serif; font-size: 48px; font-weight: 800;">FYY</text>
+      <!-- -AI Text -->
+      <text x="90" y="120" text-anchor="middle" class="ai-text" style="font-family: 'Inter', sans-serif; font-size: 28px; font-weight: 600;">AI</text>
+      <!-- Cyber accent lines -->
+      <path d="M50 50 L130 50" stroke="currentColor" stroke-width="2" class="accent" opacity="0.6"/>
+      <path d="M50 130 L130 130" stroke="currentColor" stroke-width="2" class="accent" opacity="0.6"/>
+      <!-- Corner accents -->
+      <circle cx="50" cy="50" r="3" class="accent"/>
+      <circle cx="130" cy="50" r="3" class="accent"/>
+      <circle cx="50" cy="130" r="3" class="accent"/>
+      <circle cx="130" cy="130" r="3" class="accent"/>
+    </g>
+  </g>
+  <defs>
+    <clipPath id="clip0_f_ai">
+      <rect width="180" height="180" fill="white" />
+    </clipPath>
+  </defs>
+</svg>
