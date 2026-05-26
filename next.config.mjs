@@ -1,19 +1,16 @@
+// next.config.mjs
+import withPWA from 'next-pwa';
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const pwaConfig = {
   // Enable React strict mode and SWC minification
   reactStrictMode: true,
-
 
   // Image handling – use remotePatterns (Next 16) instead of deprecated domains
   images: {
     formats: ['image/webp'],
     remotePatterns: [{ hostname: 'fyy-ai.vercel.app' }],
   },
-
-  // Remove experimental appDir – Next 16 enables app directory by default
-  // (no experimental block needed)
-
-  // Disable custom webpack config to prevent require errors in ESM and missing dependencies.
 
   env: {
     NEXT_PUBLIC_CLERK_JS: '/_clerk/js/clerk.js',
@@ -31,6 +28,42 @@ const nextConfig = {
       },
     ];
   },
+
+  // PWA settings – only active in production builds
+  ...(process.env.NODE_ENV === 'production' &&
+    withPWA({
+      pwa: {
+        dest: 'public',
+        register: true,
+        skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^\/ _next\/static\/.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'next-static-assets',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'next-image-assets',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 },
+            },
+          },
+          {
+            urlPattern: /\/api\/.*$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'api-cache',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 5 },
+            },
+          },
+        ],
+      },
+    }))
 };
 
-export default nextConfig;
+export default pwaConfig;
