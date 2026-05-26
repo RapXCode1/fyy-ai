@@ -1,79 +1,84 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ShieldAlert, RefreshCw } from "lucide-react";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { ShieldAlert } from "lucide-react";
 
-// Simple ad‑blocker detection using a hidden bait element
-function detectAdblock(): boolean {
+/**
+ * Detects ad-blockers by injecting a tiny bait element and checking if CSS hides it.
+ * Runs asynchronously after a short delay to avoid false positives on slow connections.
+ */
+async function detectAdblock(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const bait = document.createElement("div");
-  bait.className = "ad-banner";
-  bait.style.display = "block";
-  bait.style.position = "absolute";
-  bait.style.left = "-9999px";
-  document.body.appendChild(bait);
-  const isBlocked = bait.offsetHeight === 0 && bait.offsetWidth === 0;
-  document.body.removeChild(bait);
-  return isBlocked;
+
+  return new Promise((resolve) => {
+    // Delay slightly so the DOM and ad-blocker lists are fully active
+    setTimeout(() => {
+      try {
+        const bait = document.createElement("div");
+        bait.setAttribute("class", "ad-banner pub_300x250 pub_300x250m");
+        bait.setAttribute(
+          "style",
+          "width: 1px; height: 1px; position: absolute; left: -9999px; top: -9999px;"
+        );
+        document.body.appendChild(bait);
+
+        const blocked =
+          bait.offsetHeight === 0 ||
+          bait.offsetWidth === 0 ||
+          bait.style.display === "none" ||
+          bait.style.visibility === "hidden" ||
+          bait.style.opacity === "0";
+
+        document.body.removeChild(bait);
+        resolve(blocked);
+      } catch {
+        resolve(false);
+      }
+    }, 500);
+  });
 }
 
+const SESSION_KEY = "fyy-adblock-warned";
+
 export default function ClerkSecurityShield() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
-  const [showAdblock, setShowAdblock] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
-  // Session handling – redirect to sign‑in if not authenticated
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      window.location.href = "/sign-in";
-    }
-  }, [isLoaded, isSignedIn]);
+    // Only run detection once per browser session
+    if (sessionStorage.getItem(SESSION_KEY)) return;
 
-  // Ad‑blocker detection on mount
-  useEffect(() => {
-    if (detectAdblock()) {
-      setShowAdblock(true);
-      setShowToast(true);
-    }
+    detectAdblock().then((isBlocked) => {
+      if (isBlocked) {
+        setShowToast(true);
+        // Mark as warned so it doesn't re-appear on every page navigation
+        sessionStorage.setItem(SESSION_KEY, "1");
+      }
+    });
   }, []);
 
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <RefreshCw className="animate-spin mr-2" /> Loading…
-      </div>
-    );
-  }
+  if (!showToast) return null;
 
   return (
-    <>
-      {showAdblock && (
-        <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 p-3 flex items-center space-x-2 rounded-md">
-          <ShieldAlert size={20} />
-          <span>Ad‑blocker detected. Some features may be limited.</span>
+    <div
+      role="alert"
+      className="fixed bottom-4 right-4 z-[100] max-w-sm bg-zinc-950 border border-yellow-500/30 text-zinc-100 p-4 rounded-xl shadow-2xl flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="text-yellow-500 shrink-0" size={18} />
+          <span className="font-semibold text-sm">Ad‑blocker Terdeteksi</span>
         </div>
-      )}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 z-[100] max-w-sm bg-zinc-950 border border-yellow-500/30 text-zinc-100 p-4 rounded-xl shadow-2xl flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="text-yellow-500 shrink-0" size={18} />
-              <span className="font-semibold text-sm">Ad‑blocker Warning</span>
-            </div>
-            <button 
-              onClick={() => setShowToast(false)} 
-              className="text-zinc-400 hover:text-zinc-100 text-xs p-1 cursor-pointer transition-colors"
-              aria-label="Close warning"
-            >
-              ✕
-            </button>
-          </div>
-          <p className="text-xs text-zinc-300 leading-relaxed">
-            Please disable any ad‑blocking extensions for an optimal experience. Some security features and authentication panels may fail to load correctly.
-          </p>
-        </div>
-      )}
-    </>
+        <button
+          onClick={() => setShowToast(false)}
+          className="text-zinc-400 hover:text-zinc-100 text-xs p-1 cursor-pointer transition-colors"
+          aria-label="Tutup peringatan"
+        >
+          ✕
+        </button>
+      </div>
+      <p className="text-xs text-zinc-300 leading-relaxed">
+        Ad‑blocker aktif dapat memblokir fitur autentikasi (login/logout). Jika
+        mengalami masalah saat login, coba nonaktifkan sementara.
+      </p>
+    </div>
   );
 }
