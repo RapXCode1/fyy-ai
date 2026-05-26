@@ -2,14 +2,12 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
-import SpaceBackground from "@/components/space-background"
 import ThemeStyleProvider from "@/components/theme-style-provider"
+import ClientOnlyProviders from "@/components/client-only-providers"
 import "./globals.css"
 
 import { ClerkProvider } from "@clerk/nextjs"
 import type { Viewport } from "next"
-import ServiceWorkerRegister from "@/components/service-worker-register"
-import ClerkSecurityShield from "@/components/clerk-security-shield"
 
 export const viewport: Viewport = {
   themeColor: "#000000",
@@ -64,11 +62,9 @@ export default function RootLayout({
         <body className="font-sans antialiased">
           <ThemeProvider>
             <ThemeStyleProvider />
-            <SpaceBackground />
-            <ClerkSecurityShield />
+            <ClientOnlyProviders />
             {children}
             <Analytics />
-            <ServiceWorkerRegister />
           </ThemeProvider>
         </body>
       </html>

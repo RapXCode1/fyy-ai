@@ -277,5 +277,5 @@ Feel free to use, fork, and modify — attribution appreciated.
 ---
 
 <p align="center">
-  Built with ❤️ by <strong>RapXCode</strong> — FYY-AI © 2026
+  Built by <strong>RapXCode</strong> — FYY-AI © 2026
 </p>

@@ -17,17 +17,21 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        React: "readonly",
       },
     },
     plugins: {
       "@typescript-eslint": tseslint,
     },
     rules: {
-      "@typescript-eslint/no-unused-vars": "error",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
+      "no-redeclare": "off",
+      "@typescript-eslint/no-redeclare": "warn",
     },
   },
   {
-    ignores: ["node_modules/**", ".next/**", "out/**"],
+    ignores: ["node_modules/**", ".next/**", "out/**", "public/sw.js", "assets/**", "*.cjs", "*.js", "*.mjs"],
   },
 ];

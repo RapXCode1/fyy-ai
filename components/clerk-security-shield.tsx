@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { ShieldAlert, RefreshCw } from "lucide-react";
 import { useAuth, useUser } from "@clerk/nextjs";
-import dynamic from "next/dynamic";
 
 // Simple ad‑blocker detection using a hidden bait element
 function detectAdblock(): boolean {
@@ -17,9 +16,6 @@ function detectAdblock(): boolean {
   document.body.removeChild(bait);
   return isBlocked;
 }
-
-// Dynamically import a simple toast component (shadcn/ui Toast)
-const Toast = dynamic(() => import("../ui/toast"), { ssr: false });
 
 export default function ClerkSecurityShield() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -59,12 +55,24 @@ export default function ClerkSecurityShield() {
         </div>
       )}
       {showToast && (
-        <Toast
-          title="Ad‑blocker Warning"
-          description="Please disable any ad‑blocking extensions for optimal experience."
-          variant="warning"
-          onClose={() => setShowToast(false)}
-        />
+        <div className="fixed bottom-4 right-4 z-[100] max-w-sm bg-zinc-950 border border-yellow-500/30 text-zinc-100 p-4 rounded-xl shadow-2xl flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="text-yellow-500 shrink-0" size={18} />
+              <span className="font-semibold text-sm">Ad‑blocker Warning</span>
+            </div>
+            <button 
+              onClick={() => setShowToast(false)} 
+              className="text-zinc-400 hover:text-zinc-100 text-xs p-1 cursor-pointer transition-colors"
+              aria-label="Close warning"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="text-xs text-zinc-300 leading-relaxed">
+            Please disable any ad‑blocking extensions for an optimal experience. Some security features and authentication panels may fail to load correctly.
+          </p>
+        </div>
       )}
     </>
   );
