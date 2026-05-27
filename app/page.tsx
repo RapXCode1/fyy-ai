@@ -21,7 +21,6 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import SpaceBackground from "@/components/space-background"
 import { HeroWelcomeAnimation } from "@/components/animations/welcome-animation"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
@@ -179,7 +178,6 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background relative transition-all duration-500 overflow-x-hidden">
       {/* Background decoration that adapts to theme is handled by globals.css */}
-      <SpaceBackground />
 
       {/* Welcome Animation Overlay */}
       <HeroWelcomeAnimation />

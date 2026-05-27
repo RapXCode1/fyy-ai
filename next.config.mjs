@@ -2,7 +2,7 @@
 import withPWA from 'next-pwa';
 
 /** @type {import('next').NextConfig} */
-const pwaConfig = {
+const baseConfig = {
   // Enable React strict mode and SWC minification
   reactStrictMode: true,
 
@@ -28,17 +28,19 @@ const pwaConfig = {
       },
     ];
   },
+};
 
-  // PWA settings – only active in production builds
-  ...(process.env.NODE_ENV === 'production' &&
-    withPWA({
+// 🎉 PWA configuration – only applied in production builds
+const nextConfig = process.env.NODE_ENV === 'production'
+  ? withPWA({
       pwa: {
         dest: 'public',
         register: true,
         skipWaiting: true,
+        // Default caching strategies
         runtimeCaching: [
           {
-            urlPattern: /^\/ _next\/static\/.*\.(js|css)$/,
+            urlPattern: /^\/(_next\/static\/.*)\.(js|css)$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'next-static-assets',
@@ -63,7 +65,7 @@ const pwaConfig = {
           },
         ],
       },
-    }))
-};
+    })(baseConfig)
+  : baseConfig;
 
-export default pwaConfig;
+export default nextConfig;
