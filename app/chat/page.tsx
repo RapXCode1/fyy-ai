@@ -13,6 +13,7 @@ import ImageGenerator from "@/components/chat/image-generator"
 import ModesSelector from "@/components/chat/modes-selector"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useSpeechOutput } from "@/hooks/use-voice-input"
+import { useMicrophonePermission } from "@/hooks/use-microphone-permission"
 import LiveVoiceModal from "@/components/chat/live-voice-modal"
 import { useUser, useSession, useAuth } from "@clerk/nextjs"
 import { createClerkSupabaseClient } from "@/lib/supabase"
@@ -93,6 +94,8 @@ export default function ChatPage() {
   const [selectedFont, setSelectedFont] = useState("Inter")
   const [showSyncBanner, setShowSyncBanner] = useState(false)
 
+  const { permissionStatus: microphonePermissionStatus, isDenied: microphonePermissionDenied, requestPermission: requestMicrophonePermission } = useMicrophonePermission()
+
   // Capacitor Deep Linking - Sync clerk session when opened via fyyai://sync?client_token=xxx&session_token=yyy
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -136,7 +139,8 @@ export default function ChatPage() {
   // Sync Banner detector for standard mobile browsers
   useEffect(() => {
     if (typeof window !== "undefined" && isClient) {
-      const isAPK = window.navigator.userAgent.includes("FYY_AI_ANDROID_APK")
+      const win = window as any
+      const isAPK = !!(win.Capacitor?.isNativePlatform?.())
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent)
       if (!isAPK && isMobile && isSignedIn) {
         setShowSyncBanner(true)
@@ -947,6 +951,18 @@ export default function ChatPage() {
       />
 
       {/* Main Chat Area */}
+      {microphonePermissionDenied && (
+        <div className="mx-4 mb-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+          Microphone permissions ditolak. Untuk menggunakan fitur suara, izinkan akses mikrofon dan coba lagi.
+          <button
+            type="button"
+            onClick={requestMicrophonePermission}
+            className="ml-3 font-semibold underline text-red-800"
+          >
+            Minta izin lagi
+          </button>
+        </div>
+      )}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full overflow-x-hidden relative z-10">
         {/* Enhanced Header with Theme Awareness */}
         <div className="chat-header px-3 sm:px-4 pt-1 sm:pt-2 pb-1 sm:pb-2 flex items-center justify-between relative z-20 min-h-[48px] sm:min-h-[56px] transition-all duration-500 bg-background/80 backdrop-blur-md">
@@ -1296,7 +1312,7 @@ export default function ChatPage() {
               <button
                 onClick={() => {
                   document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                  window.location.href = "/sign-in";
+                  import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
                 }}
                 className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold text-sm tracking-wide transition-all duration-300 hover:scale-102 shadow-lg shadow-purple-500/20 cursor-pointer flex items-center justify-center gap-2"
               >

@@ -107,7 +107,7 @@ export default function ChatSidebar({
               <button
                 onClick={() => {
                   document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                  window.location.href = "/sign-in";
+                  import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
                 }}
                 className="w-8 h-8 flex items-center justify-center bg-amber-500/10 hover:bg-amber-500/25 rounded-lg transition-colors border border-amber-500/25 text-amber-500 cursor-pointer"
                 title="Keluar dari Guest Mode"

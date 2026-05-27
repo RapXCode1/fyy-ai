@@ -17,6 +17,7 @@ const baseConfig = {
     NEXT_PUBLIC_CLERK_JS: '/_clerk/js/clerk.js',
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: '/sign-in',
     NEXT_PUBLIC_CLERK_SIGN_UP_URL: '/sign-up',
+    NEXT_PUBLIC_AUTH_CALLBACK: 'https://fyy-ai.vercel.app/api/auth/clerk/callback',
   },
 
   // Proxy Clerk script (middleware deprecated → proxy)
