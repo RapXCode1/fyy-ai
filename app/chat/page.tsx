@@ -153,15 +153,37 @@ export default function ChatPage() {
 
   const [liveModeTrigger, setLiveModeTrigger] = useState(0)
   const [isRecordingState, setIsRecordingState] = useState(false)
+  const [isVoiceInputBlocked, setIsVoiceInputBlocked] = useState(false)
+  const voiceBlockedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { speak, isSpeaking, stop: stopSpeech } = useSpeechOutput({
+    onStart: () => {
+      if (isLiveModeRef.current) {
+        setIsVoiceInputBlocked(true)
+      }
+    },
     onEnd: () => {
-      // When AI finishes speaking, if we are in live mode, restart listening
-      if (isLiveMode) {
-        setLiveModeTrigger(prev => prev + 1)
+      if (isLiveModeRef.current) {
+        if (voiceBlockedTimeoutRef.current) {
+          window.clearTimeout(voiceBlockedTimeoutRef.current)
+        }
+
+        setIsVoiceInputBlocked(true)
+        voiceBlockedTimeoutRef.current = window.setTimeout(() => {
+          setIsVoiceInputBlocked(false)
+          setLiveModeTrigger(prev => prev + 1)
+        }, 600)
       }
     }
   })
+
+  useEffect(() => {
+    return () => {
+      if (voiceBlockedTimeoutRef.current) {
+        window.clearTimeout(voiceBlockedTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -1224,6 +1246,8 @@ export default function ChatPage() {
             liveModeTrigger={liveModeTrigger}
             isLiveMode={isLiveMode}
             isSpeaking={isSpeaking}
+            isVoiceInputBlocked={isVoiceInputBlocked}
+            lastAssistantContent={messages.slice().reverse().find((msg) => msg.role === 'assistant')?.content}
           />
         </div>
       </div>

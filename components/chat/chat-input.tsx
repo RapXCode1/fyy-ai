@@ -20,6 +20,8 @@ interface ChatInputProps {
   liveModeTrigger?: number
   isLiveMode?: boolean
   isSpeaking?: boolean
+  isVoiceInputBlocked?: boolean
+  lastAssistantContent?: string
 }
 
 interface UploadedFile {
@@ -28,7 +30,7 @@ interface UploadedFile {
   id: string
 }
 
-export default function ChatInput({ value, onChange, onSend, isLoading, selectedModel, onShowQuickPrompts, onLiveModeToggle, onVoiceEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false, isSpeaking = false }: ChatInputProps) {
+export default function ChatInput({ value, onChange, onSend, isLoading, selectedModel, onShowQuickPrompts, onLiveModeToggle, onVoiceEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false, isSpeaking = false, isVoiceInputBlocked = false, lastAssistantContent = "" }: ChatInputProps) {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -63,6 +65,20 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
   }
 
   const handleVoiceTranscript = (text: string) => {
+    const trimmedVoice = text.trim()
+    const normalizedTranscript = trimmedVoice.toLowerCase()
+    const normalizedAssistant = lastAssistantContent.trim().toLowerCase()
+
+    const isSelfEcho = isLiveMode && normalizedAssistant && normalizedTranscript.length >= 10 && (
+      normalizedAssistant === normalizedTranscript ||
+      normalizedAssistant.includes(normalizedTranscript) ||
+      normalizedTranscript.includes(normalizedAssistant)
+    )
+
+    if (isSelfEcho) {
+      return
+    }
+
     onChange(value + (value ? " " : "") + text)
   }
 
@@ -227,7 +243,7 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
         </div>
         <VoiceInput 
           onTranscript={handleVoiceTranscript} 
-          disabled={isLoading || isSpeaking} 
+          disabled={isLoading || isSpeaking || isVoiceInputBlocked} 
           onLiveModeToggle={onLiveModeToggle} 
           onRecordingEnd={onVoiceEnd}
           onRecordingStateChange={onRecordingStateChange}

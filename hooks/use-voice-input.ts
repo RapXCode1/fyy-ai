@@ -16,6 +16,7 @@ interface SpeechRecognition extends EventTarget {
   lang: string
   start(): void
   stop(): void
+  abort(): void
   onstart: ((this: SpeechRecognition, ev: Event) => void) | null
   onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
   onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
@@ -151,10 +152,27 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
   }, [isRecording, onError])
 
   const stopRecording = useCallback(() => {
-    if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop()
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort()
+      } catch (error) {
+        console.error("Failed to abort speech recognition:", error)
+      }
     }
-  }, [isRecording])
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort()
+        } catch {
+          // ignore cleanup errors
+        }
+        recognitionRef.current = null
+      }
+    }
+  }, [])
 
   return {
     isRecording,
