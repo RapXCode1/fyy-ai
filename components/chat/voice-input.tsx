@@ -136,6 +136,12 @@ export default function VoiceInput({ onTranscript, disabled, onLiveModeToggle, o
     }
   }, [isRecording])
 
+  useEffect(() => {
+    if (disabled && isRecording) {
+      stopRecording()
+    }
+  }, [disabled, isRecording, stopRecording])
+
   const handleErrorClick = () => {
     setError("")
     if (errorTimeout) {

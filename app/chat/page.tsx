@@ -1223,6 +1223,7 @@ export default function ChatPage() {
             onVoiceEnd={handleVoiceEnd}
             liveModeTrigger={liveModeTrigger}
             isLiveMode={isLiveMode}
+            isSpeaking={isSpeaking}
           />
         </div>
       </div>

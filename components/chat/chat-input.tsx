@@ -19,6 +19,7 @@ interface ChatInputProps {
   onRecordingStateChange?: (isRecording: boolean) => void
   liveModeTrigger?: number
   isLiveMode?: boolean
+  isSpeaking?: boolean
 }
 
 interface UploadedFile {
@@ -27,7 +28,7 @@ interface UploadedFile {
   id: string
 }
 
-export default function ChatInput({ value, onChange, onSend, isLoading, selectedModel, onShowQuickPrompts, onLiveModeToggle, onVoiceEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false }: ChatInputProps) {
+export default function ChatInput({ value, onChange, onSend, isLoading, selectedModel, onShowQuickPrompts, onLiveModeToggle, onVoiceEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false, isSpeaking = false }: ChatInputProps) {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -226,7 +227,7 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
         </div>
         <VoiceInput 
           onTranscript={handleVoiceTranscript} 
-          disabled={isLoading} 
+          disabled={isLoading || isSpeaking} 
           onLiveModeToggle={onLiveModeToggle} 
           onRecordingEnd={onVoiceEnd}
           onRecordingStateChange={onRecordingStateChange}
