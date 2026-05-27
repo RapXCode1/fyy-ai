@@ -18,3 +18,7 @@ Flow:
 - Clerk redirects to `/auth/clerk/callback?code=...`.
 - Backend exchanges the code, issues a one-time `session_token` and redirects to `fyyai://sync?session_token=...`.
 - APK receives deep link and sets the session token into the WebView.
+
+Mobile platform notes:
+- Android: ensure the `AndroidManifest.xml` has an intent-filter for the `fyyai` scheme (this repo already includes it). We narrowed it to `fyyai://sync`.
+- iOS: register the custom URL scheme `fyyai` in Info.plist under `CFBundleURLTypes`.
