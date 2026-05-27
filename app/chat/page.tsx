@@ -154,7 +154,7 @@ export default function ChatPage() {
   const [liveModeTrigger, setLiveModeTrigger] = useState(0)
   const [isRecordingState, setIsRecordingState] = useState(false)
   const [isVoiceInputBlocked, setIsVoiceInputBlocked] = useState(false)
-  const voiceBlockedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const voiceBlockedTimeoutRef = useRef<number | null>(null)
 
   const { speak, isSpeaking, stop: stopSpeech } = useSpeechOutput({
     onStart: () => {

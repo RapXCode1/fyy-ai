@@ -5,6 +5,7 @@ import withPWA from 'next-pwa';
 const baseConfig = {
   // Enable React strict mode and SWC minification
   reactStrictMode: true,
+  turbopack: {},
 
   // Image handling – use remotePatterns (Next 16) instead of deprecated domains
   images: {
