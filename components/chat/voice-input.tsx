@@ -16,7 +16,7 @@ interface VoiceInputProps {
 }
 
 export default function VoiceInput({ onTranscript, disabled, onLiveModeToggle, onRecordingEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false }: VoiceInputProps) {
-  const { isRecording, isSupported, startRecording, stopRecording } = useVoiceInput({
+  const { isRecording, isSupported, permissionState, requestMicrophonePermission, startRecording, stopRecording } = useVoiceInput({
     onTranscript: (text) => {
       onTranscript(text)
       setError("")
@@ -74,9 +74,14 @@ export default function VoiceInput({ onTranscript, disabled, onLiveModeToggle, o
     }
   }, [liveModeTrigger, isLiveMode, isRecording, disabled, startRecording])
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const handlePointerDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
     if (disabled) return
-    
+
+    if (permissionState === 'denied') {
+      const granted = await requestMicrophonePermission()
+      if (!granted) return
+    }
+
     // Unlock browser audio engine for TTS (required by Chrome/Safari to allow async speaking later)
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const unlockUtterance = new SpeechSynthesisUtterance("")
@@ -229,6 +234,12 @@ export default function VoiceInput({ onTranscript, disabled, onLiveModeToggle, o
       {isRecording && startY === null && (
         <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none animate-fade-in">
           🎤 Listening...
+        </div>
+      )}
+
+      {permissionState === 'denied' && !isRecording && (
+        <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none animate-fade-in">
+          Microphone permission denied. Izinkan akses mikrofon di pengaturan aplikasi.
         </div>
       )}
 
