@@ -164,7 +164,7 @@ export default function ChatSidebar({
                 <button
                   onClick={() => {
                     document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                    window.location.href = "/sign-in";
+                    import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
                   }}
                   className="w-7 h-7 flex items-center justify-center bg-yellow-500/10 hover:bg-yellow-500/20 rounded-lg transition-colors text-yellow-500 cursor-pointer"
                   title="Log in to Save Chats"

@@ -13,6 +13,7 @@ import ImageGenerator from "@/components/chat/image-generator"
 import ModesSelector from "@/components/chat/modes-selector"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useSpeechOutput } from "@/hooks/use-voice-input"
+import { useMicrophonePermission } from "@/hooks/use-microphone-permission"
 import LiveVoiceModal from "@/components/chat/live-voice-modal"
 import { useUser, useSession, useAuth } from "@clerk/nextjs"
 import { createClerkSupabaseClient } from "@/lib/supabase"
@@ -93,10 +94,52 @@ export default function ChatPage() {
   const [selectedFont, setSelectedFont] = useState("Inter")
   const [showSyncBanner, setShowSyncBanner] = useState(false)
 
+  const { permissionStatus: microphonePermissionStatus, isDenied: microphonePermissionDenied, requestPermission: requestMicrophonePermission } = useMicrophonePermission()
+
+  // Capacitor Deep Linking - Sync clerk session when opened via fyyai://sync?client_token=xxx&session_token=yyy
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleAppUrlOpen = async (event: any) => {
+        try {
+          const urlStr = event.url;
+          if (urlStr.startsWith("fyyai://sync")) {
+            const url = new URL(urlStr.replace("fyyai://", "https://"));
+            const clientToken = url.searchParams.get("client_token");
+            const sessionToken = url.searchParams.get("session_token");
+
+            if (sessionToken) {
+              // Set Clerk cookies on Webview directly
+              document.cookie = `__session=${decodeURIComponent(sessionToken)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+
+              if (clientToken) {
+                document.cookie = `__client=${decodeURIComponent(clientToken)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
+              }
+
+              // Clear guest cookie
+              document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
+
+              // Force reload to log in
+              window.location.reload();
+            }
+          }
+        } catch (e) {
+          console.error("Deep link sync error:", e);
+        }
+      };
+
+      // Listen to Capacitor App events safely
+      import("@capacitor/app").then(({ App }) => {
+        App.addListener("appUrlOpen", handleAppUrlOpen);
+      }).catch((err) => {
+        console.log("Capacitor App listener not active (standard web mode)", err);
+      });
+    }
+  }, []);
   // Sync Banner detector for standard mobile browsers
   useEffect(() => {
     if (typeof window !== "undefined" && isClient) {
-      const isAPK = window.navigator.userAgent.includes("FYY_AI_ANDROID_APK")
+      const win = window as any
+      const isAPK = !!(win.Capacitor?.isNativePlatform?.())
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent)
       if (!isAPK && isMobile && isSignedIn) {
         setShowSyncBanner(true)
@@ -113,14 +156,37 @@ export default function ChatPage() {
 
   const [liveModeTrigger, setLiveModeTrigger] = useState(0)
   const [isRecordingState, setIsRecordingState] = useState(false)
+  const [isVoiceInputBlocked, setIsVoiceInputBlocked] = useState(false)
+  const voiceBlockedTimeoutRef = useRef<number | null>(null)
 
   const { speak, isSpeaking, stop: stopSpeech } = useSpeechOutput({
+    onStart: () => {
+      if (isLiveModeRef.current) {
+        setIsVoiceInputBlocked(true)
+      }
+    },
     onEnd: () => {
-      if (isLiveMode) {
-        setLiveModeTrigger(prev => prev + 1)
+      if (isLiveModeRef.current) {
+        if (voiceBlockedTimeoutRef.current) {
+          window.clearTimeout(voiceBlockedTimeoutRef.current)
+        }
+
+        setIsVoiceInputBlocked(true)
+        voiceBlockedTimeoutRef.current = window.setTimeout(() => {
+          setIsVoiceInputBlocked(false)
+          setLiveModeTrigger(prev => prev + 1)
+        }, 600)
       }
     }
   })
+
+  useEffect(() => {
+    return () => {
+      if (voiceBlockedTimeoutRef.current) {
+        window.clearTimeout(voiceBlockedTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -854,6 +920,18 @@ export default function ChatPage() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full relative z-10">
+        {microphonePermissionDenied && (
+          <div className="mx-4 mt-3 mb-1 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-red-400 flex items-center justify-between">
+            <span className="font-medium">Microphone permission denied. Enable microphone access in settings to use voice input.</span>
+            <button
+              type="button"
+              onClick={requestMicrophonePermission}
+              className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded-lg font-bold text-[10px] text-red-300 transition-colors uppercase tracking-wider"
+            >
+              Allow Access
+            </button>
+          </div>
+        )}
         
         {/* Enhanced Header */}
         <div
@@ -864,7 +942,7 @@ export default function ChatPage() {
             borderColor: "rgba(255, 255, 255, 0.05)"
           }}
         >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex items-center gap-3 relative z-10 flex-shrink-0 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -1179,6 +1257,9 @@ export default function ChatPage() {
             onVoiceEnd={handleVoiceEnd}
             liveModeTrigger={liveModeTrigger}
             isLiveMode={isLiveMode}
+            isSpeaking={isSpeaking}
+            isVoiceInputBlocked={isVoiceInputBlocked}
+            lastAssistantContent={messages.slice().reverse().find((msg) => msg.role === 'assistant')?.content}
           />
         </div>
 
@@ -1227,7 +1308,7 @@ export default function ChatPage() {
               <button
                 onClick={() => {
                   document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                  window.location.href = "/sign-in";
+                  import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
                 }}
                 className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-wide transition-all duration-300"
               >

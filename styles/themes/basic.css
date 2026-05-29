@@ -28,10 +28,6 @@
     radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.05) 0px, transparent 50%);
 }
 
-.style-basic .space-background {
-  display: none !important;
-}
-
 .style-basic .chat-sidebar {
   background-color: var(--background) !important;
   border-right: 1px solid var(--border) !important;

@@ -19,6 +19,9 @@ interface ChatInputProps {
   onRecordingStateChange?: (isRecording: boolean) => void
   liveModeTrigger?: number
   isLiveMode?: boolean
+  isSpeaking?: boolean
+  isVoiceInputBlocked?: boolean
+  lastAssistantContent?: string
 }
 
 interface UploadedFile {
@@ -38,7 +41,10 @@ export default function ChatInput({
   onVoiceEnd,
   onRecordingStateChange,
   liveModeTrigger = 0,
-  isLiveMode = false
+  isLiveMode = false,
+  isSpeaking = false,
+  isVoiceInputBlocked = false,
+  lastAssistantContent = ""
 }: ChatInputProps) {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
@@ -74,6 +80,20 @@ export default function ChatInput({
   }
 
   const handleVoiceTranscript = (text: string) => {
+    const trimmedVoice = text.trim()
+    const normalizedTranscript = trimmedVoice.toLowerCase()
+    const normalizedAssistant = lastAssistantContent.trim().toLowerCase()
+
+    const isSelfEcho = isLiveMode && normalizedAssistant && normalizedTranscript.length >= 10 && (
+      normalizedAssistant === normalizedTranscript ||
+      normalizedAssistant.includes(normalizedTranscript) ||
+      normalizedTranscript.includes(normalizedAssistant)
+    )
+
+    if (isSelfEcho) {
+      return
+    }
+
     onChange(value + (value ? " " : "") + text)
   }
 
@@ -245,7 +265,7 @@ export default function ChatInput({
         {/* Voice button */}
         <VoiceInput 
           onTranscript={handleVoiceTranscript} 
-          disabled={isLoading} 
+          disabled={isLoading || isSpeaking || isVoiceInputBlocked} 
           onLiveModeToggle={onLiveModeToggle} 
           onRecordingEnd={onVoiceEnd}
           onRecordingStateChange={onRecordingStateChange}

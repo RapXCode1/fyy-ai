@@ -22,15 +22,6 @@
   --theme-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
 }
 
-.style-glass .space-background {
-  display: block !important;
-}
-
-/* Hide space background in light mode if desired, or keep it subtle */
-.style-glass:not(.dark) .space-background {
-  opacity: 0.1;
-}
-
 .style-glass .chat-sidebar {
   background-color: var(--card) !important;
   border-right: 1px solid var(--border) !important;
