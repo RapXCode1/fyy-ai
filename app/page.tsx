@@ -77,11 +77,19 @@ export default function LandingPage() {
 
       {/* ── NAV ── */}
       <nav
-        className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
+        className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
         style={{
-          background: scrolled ? "rgba(6,8,22,0.92)" : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
+          background: scrolled
+            ? "rgba(6,8,22,0.88)"
+            : "rgba(6,8,22,0.45)",
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
+          borderBottom: scrolled
+            ? "1px solid rgba(255,255,255,0.07)"
+            : "1px solid rgba(255,255,255,0.03)",
+          boxShadow: scrolled
+            ? "0 4px 32px rgba(0,0,0,0.4)"
+            : "none",
         }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -133,7 +141,11 @@ export default function LandingPage() {
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t animate-fade-in"
-            style={{ background: "rgba(6,8,22,0.98)", borderColor: "rgba(255,255,255,0.06)" }}
+            style={{
+              background: "rgba(6,8,22,0.97)",
+              backdropFilter: "blur(24px)",
+              borderColor: "rgba(255,255,255,0.06)"
+            }}
           >
             <div className="px-4 py-4 flex flex-col gap-4">
               {navLinks.map(l => (
@@ -149,7 +161,16 @@ export default function LandingPage() {
             </div>
           </div>
         )}
+
+        {/* Subtle gradient fade to page below nav */}
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 translate-y-full h-8"
+          style={{
+            background: "linear-gradient(to bottom, rgba(6,8,22,0.15), transparent)",
+          }}
+        />
       </nav>
+
 
       {/* ── HERO ── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-20 lg:pt-40 lg:pb-28">
