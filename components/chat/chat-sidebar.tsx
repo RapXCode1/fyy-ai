@@ -1,7 +1,6 @@
 "use client"
 
-import { Plus, Trash2, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Plus, Trash2, Settings, MessageSquare, LogOut, Sparkles } from "lucide-react"
 import { useUser, UserButton } from "@clerk/nextjs"
 
 interface Conversation {
@@ -31,130 +30,184 @@ export default function ChatSidebar({
 }: ChatSidebarProps) {
   const { user, isSignedIn, isLoaded } = useUser()
   const isGuest = isLoaded && !isSignedIn
+
   return (
     <>
+      {/* Mobile Drawer Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden animate-fade-in backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden animate-fade-in backdrop-blur-md"
           onClick={onClose}
         />
       )}
 
-      <div className={`fixed lg:relative inset-y-0 left-0 z-50 chat-sidebar flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${
-        isOpen ? "w-72 opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-full lg:translate-x-0"
-      }`}>
-        {/* Inner container with fixed width to prevent content squishing during transition */}
-        <div className="w-72 flex flex-col h-full">
-        {/* New Chat Button */}
-        <div className="p-5 border-b border-border/50 bg-gradient-to-b from-card/60 to-card/40">
-          <Button
-            onClick={onNewChat}
-            className="w-full bg-primary text-primary-foreground border-0 justify-center gap-3 rounded-lg py-3 font-semibold transition-all duration-200 hover:bg-primary/90"
-          >
-            <Plus size={18} />
-            New Chat
-          </Button>
-        </div>
+      {/* Sidebar Container */}
+      <div
+        className={`fixed lg:relative inset-y-0 left-0 z-50 chat-sidebar flex flex-col transition-all duration-300 ease-in-out overflow-hidden`}
+        style={{
+          width: isOpen ? "280px" : "0px",
+          opacity: isOpen ? 1 : 0,
+          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          background: "#0E1324",
+          borderRight: "1px solid rgba(255, 255, 255, 0.06)",
+        }}
+      >
+        <div className="w-[280px] flex flex-col h-full">
+          
+          {/* Header & New Chat button */}
+          <div className="p-4 flex flex-col gap-4 border-b border-[rgba(255,255,255,0.06)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg fyf-gradient-bg flex items-center justify-center">
+                  <span className="text-white text-xs font-black">F</span>
+                </div>
+                <span className="text-sm font-bold tracking-tight text-white">FYY-AI Workspace</span>
+              </div>
+            </div>
 
-        {/* Conversations List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {conversations.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">No conversations yet</p>
-          ) : (
-            conversations.map((conversation, index) => (
-              <div
-                key={conversation.id}
-                className={`group relative p-3 rounded-md cursor-pointer transition-all duration-200 ${
-                  currentConversationId === conversation.id
-                    ? "bg-primary/10 border border-primary/30"
-                    : "hover:bg-muted/50"
-                }`}
-                onClick={() => onSelectConversation(conversation.id)}
-              >
-                <p className="text-sm font-medium text-foreground truncate">
-                  {conversation.title}
-                </p>
+            <button
+              onClick={onNewChat}
+              className="w-full fyf-btn-primary py-2.5 justify-center flex items-center gap-2 text-xs font-semibold rounded-xl"
+            >
+              <Plus size={14} />
+              New Chat
+            </button>
+          </div>
+
+          {/* Chat History Section */}
+          <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <div className="px-2 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center justify-between">
+              <span>Recents</span>
+              <span className="text-[9px] font-medium text-gray-600 bg-white/5 px-1.5 py-0.5 rounded-md">
+                {conversations.length}
+              </span>
+            </div>
+
+            {conversations.length === 0 ? (
+              <div className="py-12 text-center">
+                <MessageSquare size={24} className="mx-auto text-gray-600 mb-2 opacity-50" />
+                <p className="text-[11px] text-gray-500 font-medium">Start a new conversation</p>
+              </div>
+            ) : (
+              conversations.map((conv) => {
+                const isSelected = currentConversationId === conv.id
+                return (
+                  <div
+                    key={conv.id}
+                    className="group relative flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200"
+                    style={{
+                      background: isSelected ? "rgba(255, 255, 255, 0.03)" : "transparent",
+                      borderLeft: isSelected ? "2px solid #2563FF" : "2px solid transparent",
+                    }}
+                    onClick={() => onSelectConversation(conv.id)}
+                  >
+                    <MessageSquare
+                      size={14}
+                      style={{
+                        color: isSelected ? "#2563FF" : "#4B5563",
+                      }}
+                      className="flex-shrink-0"
+                    />
+                    
+                    <span
+                      className="text-xs font-medium truncate flex-1 pr-6"
+                      style={{
+                        color: isSelected ? "#FFFFFF" : "#9CA3AF",
+                      }}
+                    >
+                      {conv.title || "Untitled Conversation"}
+                    </span>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDeleteConversation(conv.id)
+                      }}
+                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-all duration-150"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Pro Banner Upgrade info (Linear style) */}
+          <div className="mx-3 mb-2 p-3.5 rounded-2xl border border-white/5 bg-white/[0.02] flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles size={12} className="text-yellow-400" />
+              <span className="text-[10px] font-black text-white uppercase tracking-wider">FYY Pro Tier</span>
+            </div>
+            <p className="text-[10px] text-gray-400 leading-normal">
+              Get priority processing, unlimited image generation, and native voice features.
+            </p>
+          </div>
+
+          {/* User Account / Footer */}
+          <div className="p-4 border-t border-[rgba(255,255,255,0.06)] bg-black/10 flex flex-col gap-3">
+            {isGuest ? (
+              <div className="flex items-center gap-3 p-2 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
+                <div className="w-8 h-8 rounded-full border border-yellow-500/30 overflow-hidden bg-yellow-500/10 flex items-center justify-center text-yellow-500 font-bold text-xs">
+                  G
+                </div>
+                
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold truncate text-white">
+                    Guest Session
+                  </span>
+                  <span className="text-[9px] font-medium text-yellow-500/80 truncate">
+                    Limited Access (20 Chats)
+                  </span>
+                </div>
+
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDeleteConversation(conversation.id)
+                  onClick={() => {
+                    document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
+                    window.location.href = "/sign-in";
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded transition-all duration-200"
+                  className="w-7 h-7 flex items-center justify-center bg-yellow-500/10 hover:bg-yellow-500/20 rounded-lg transition-colors text-yellow-500 cursor-pointer"
+                  title="Log in to Save Chats"
                 >
-                  <Trash2 size={14} className="text-muted-foreground hover:text-destructive" />
+                  <LogOut size={12} />
                 </button>
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              <div className="flex items-center gap-3 p-2 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
+                <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden bg-[#111827] flex-shrink-0">
+                  {user?.imageUrl ? (
+                    <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-500/20 text-blue-400 font-bold text-xs">
+                      {user?.firstName?.[0] || 'U'}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold truncate text-white">
+                    {user?.fullName || 'User'}
+                  </span>
+                  <span className="text-[9px] text-gray-500 truncate">
+                    {user?.primaryEmailAddress?.emailAddress || 'Free Tier'}
+                  </span>
+                </div>
 
-        <div className="p-4 border-t border-border/50 bg-gradient-to-t from-card/60 to-transparent flex flex-col gap-4">
-          {isGuest ? (
-            <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-xl border border-border/30 hover:bg-muted/50 transition-colors group/account">
-              <div className="w-8 h-8 rounded-full border border-border/50 shadow-sm overflow-hidden bg-cyan-500/10 flex items-center justify-center text-cyan-400 font-bold text-xs">
-                G
-              </div>
-              
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-bold truncate text-foreground/90">
-                  Tamu (Guest Mode)
-                </span>
-                <span className="text-[10px] font-medium text-amber-500/80 truncate">
-                  Trial Terbatas (20 Chat)
-                </span>
-              </div>
-
-              <button
-                onClick={() => {
-                  document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                  window.location.href = "/sign-in";
-                }}
-                className="w-8 h-8 flex items-center justify-center bg-amber-500/10 hover:bg-amber-500/25 rounded-lg transition-colors border border-amber-500/25 text-amber-500 cursor-pointer"
-                title="Keluar dari Guest Mode"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-log-out">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" x2="9" y1="12" y2="12" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-xl border border-border/30 hover:bg-muted/50 transition-colors group/account">
-              {/* Static Avatar for visual */}
-              <div className="w-8 h-8 rounded-full border border-border/50 shadow-sm overflow-hidden bg-background">
-                {user?.imageUrl ? (
-                  <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-primary/20 text-primary font-bold text-xs">
-                    {user?.firstName?.[0] || 'U'}
+                <div className="relative w-7 h-7 flex items-center justify-center bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border border-white/5">
+                  <Settings size={12} className="text-gray-400" />
+                  <div className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer">
+                    <UserButton appearance={{ elements: { avatarBox: "w-7 h-7 rounded-none" } }} />
                   </div>
-                )}
-              </div>
-              
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-bold truncate text-foreground/90">
-                  {user?.fullName || 'User'}
-                </span>
-                <span className="text-[10px] font-medium text-cyan-500/80 truncate">
-                  {user?.primaryEmailAddress?.emailAddress || 'Free Tier'}
-                </span>
-              </div>
-
-              {/* Settings Button that overlays the actual invisible Clerk UserButton */}
-              <div className="relative w-8 h-8 flex items-center justify-center bg-background/50 rounded-lg hover:bg-muted transition-colors cursor-pointer border border-border/50">
-                <Settings size={14} className="text-muted-foreground transition-colors group-hover/account:text-cyan-400 group-hover/account:animate-spin-slow" />
-                <div className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer">
-                  <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 rounded-none" } }} />
                 </div>
               </div>
+            )}
+            
+            <div className="px-1 text-center sm:text-left">
+              <p className="text-[8px] uppercase tracking-widest text-gray-500 font-black">FYY-GROQ SYSTEM INTELLIGENCE</p>
+              <p className="text-[8px] text-gray-600 mt-0.5 font-medium">© 2026 FYY-AI · Built by RapXCode</p>
             </div>
-          )}
-          <div>
-            <p className="text-[9px] uppercase tracking-widest text-muted-foreground/60 font-black">FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)</p>
-            <p className="text-[9px] text-muted-foreground/40 mt-0.5 font-medium">© 2026 FYY-AI by RapXCode</p>
           </div>
-        </div>
+
         </div>
       </div>
     </>

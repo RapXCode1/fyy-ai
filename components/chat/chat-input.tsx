@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Send, Paperclip, Zap, X } from "lucide-react"
+import { Send, Paperclip, Zap, X, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import VoiceInput from "./voice-input"
 import FileUpload from "./file-upload"
@@ -27,7 +27,19 @@ interface UploadedFile {
   id: string
 }
 
-export default function ChatInput({ value, onChange, onSend, isLoading, selectedModel, onShowQuickPrompts, onLiveModeToggle, onVoiceEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false }: ChatInputProps) {
+export default function ChatInput({
+  value,
+  onChange,
+  onSend,
+  isLoading,
+  selectedModel,
+  onShowQuickPrompts,
+  onLiveModeToggle,
+  onVoiceEnd,
+  onRecordingStateChange,
+  liveModeTrigger = 0,
+  isLiveMode = false
+}: ChatInputProps) {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -124,7 +136,6 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
       setAnalysisError("")
     }
     
-    // Auto-focus back on textarea after sending
     setTimeout(() => {
       textareaRef.current?.focus()
     }, 50)
@@ -135,53 +146,57 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
   }
 
   return (
-    <div className="px-1 sm:px-2 max-w-6xl mx-auto space-y-2">
+    <div className="px-3 max-w-4xl mx-auto space-y-3 pb-safe">
+      
+      {/* File Upload Dialog */}
       {showFileUpload && (
-        <div className="pt-2">
+        <div className="animate-fade-up">
           <FileUpload onFileUpload={handleFileUpload} />
         </div>
       )}
 
       {/* Analysis Error */}
       {analysisError && (
-        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-          <p className="text-sm text-destructive font-medium">File Analysis Error</p>
-          <p className="text-xs text-destructive/80 mt-1">{analysisError}</p>
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-red-400 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs text-red-400 font-semibold">File Analysis Error</p>
+            <p className="text-[11px] text-red-400/80 mt-0.5">{analysisError}</p>
+          </div>
         </div>
       )}
 
       {/* Uploaded Files Preview */}
       {uploadedFiles.length > 0 && (
-        <div className="p-3 bg-muted/50 rounded-lg border border-border">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>📎 Files attached ({uploadedFiles.length})</span>
+        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
+              <span>Attached Files ({uploadedFiles.length})</span>
               {isAnalyzing && (
-                <span className="text-cyan-400 animate-pulse flex items-center gap-1">
+                <span className="text-blue-400 animate-pulse flex items-center gap-1.5 font-normal">
                   <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
-                  Analyzing...
+                  Analyzing document...
                 </span>
               )}
             </div>
             <button
               onClick={() => setUploadedFiles([])}
-              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-              title="Clear all files"
+              className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
             >
               Clear all
             </button>
           </div>
+          
           <div className="flex flex-wrap gap-2">
-            {uploadedFiles.map((uploadedFile, index) => (
-              <div key={uploadedFile.id} className="flex items-center gap-2 px-3 py-1 bg-background rounded-lg border border-border/50 text-sm">
-                <span className="truncate max-w-32">{uploadedFile.file.name}</span>
-                <span className="text-xs text-muted-foreground">({(uploadedFile.file.size / 1024 / 1024).toFixed(1)}MB)</span>
+            {uploadedFiles.map((uf, index) => (
+              <div key={uf.id} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-xl border border-white/5 text-xs text-gray-200">
+                <span className="truncate max-w-[120px] font-medium">{uf.file.name}</span>
+                <span className="text-[10px] text-gray-500">({(uf.file.size / 1024 / 1024).toFixed(1)}MB)</span>
                 <button
                   onClick={() => removeFile(index)}
-                  className="p-0.5 hover:bg-destructive/20 rounded transition-colors"
-                  title="Remove file"
+                  className="p-0.5 hover:bg-red-500/10 rounded-md transition-colors"
                 >
-                  <X size={12} className="text-muted-foreground hover:text-destructive" />
+                  <X size={10} className="text-gray-500 hover:text-red-400" />
                 </button>
               </div>
             ))}
@@ -189,26 +204,28 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
         </div>
       )}
 
-      <div className="flex gap-2 items-end justify-center">
-        {/* Slightly larger, more premium container with items-end alignment */}
-        <div className="flex-1 flex items-end theme-input px-3 sm:px-4 py-2 sm:py-3 focus-within:border-cyan-400/60 focus-within:ring-2 focus-within:ring-cyan-400/20 transition-all duration-500 ease-out hover:shadow-lg hover:shadow-cyan-500/5">
-          {/* Input buttons inside the text area - perfectly proportioned */}
-          <div className="flex items-center gap-1.5 sm:gap-2 mr-2 sm:mr-3 flex-shrink-0 mb-[1px] sm:mb-[3px]">
+      {/* Main pill bar */}
+      <div className="flex gap-2 items-end">
+        <div className="flex-1 flex items-end px-3 py-2 bg-[#0E1324] border border-white/5 rounded-2xl focus-within:border-blue-500/50 transition-all duration-300">
+          
+          {/* Inner Buttons */}
+          <div className="flex items-center gap-1 mr-2 flex-shrink-0 mb-0.5">
             <Button
               variant="ghost"
               onClick={() => setShowFileUpload(!showFileUpload)}
               title="Upload files"
-              className="h-[32px] w-[32px] sm:h-[38px] sm:w-[38px] p-0 hover:bg-muted/80 rounded-lg transition-colors flex items-center justify-center"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors flex items-center justify-center"
             >
-              <Paperclip className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+              <Paperclip className="h-4 w-4" />
             </Button>
+            
             <Button
               variant="ghost"
               onClick={onShowQuickPrompts}
-              title="Quick prompt suggestion"
-              className="h-[32px] w-[32px] sm:h-[38px] sm:w-[38px] p-0 hover:bg-muted/80 rounded-lg hidden sm:flex transition-colors items-center justify-center"
+              title="Quick suggestions"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg hidden sm:flex transition-colors items-center justify-center"
             >
-              <Zap className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px] text-amber-500" />
+              <Zap className="h-4 w-4 text-amber-500" />
             </Button>
           </div>
 
@@ -218,12 +235,14 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
             onChange={(e) => onChange(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask FYY-AI anything..."
-            className="flex-1 bg-transparent outline-none resize-none text-foreground placeholder-muted-foreground transition-all duration-200 ease-out focus:placeholder-cyan-400/80 leading-relaxed min-h-[24px] scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent py-1 sm:py-1.5"
+            className="flex-1 bg-transparent outline-none resize-none text-sm text-white placeholder-gray-500 leading-relaxed min-h-[24px] py-1 selection-enabled"
             rows={1}
             disabled={isLoading}
             maxLength={2000}
           />
         </div>
+
+        {/* Voice button */}
         <VoiceInput 
           onTranscript={handleVoiceTranscript} 
           disabled={isLoading} 
@@ -233,18 +252,21 @@ export default function ChatInput({ value, onChange, onSend, isLoading, selected
           liveModeTrigger={liveModeTrigger}
           isLiveMode={isLiveMode}
         />
+
+        {/* Send Button */}
         <Button
           onClick={handleSend}
           disabled={(!value.trim() && uploadedFiles.length === 0) || isLoading || isAnalyzing}
-          className="bg-primary text-primary-foreground h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-lg transition-all duration-200 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed group flex-shrink-0 flex items-center justify-center"
+          className="fyf-btn-primary h-[40px] w-[40px] rounded-xl flex-shrink-0 flex items-center justify-center"
         >
           {isAnalyzing ? (
-            <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent" />
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
           ) : (
-            <Send className="h-[18px] w-[18px] sm:h-[22px] sm:w-[22px]" />
+            <Send className="h-4 w-4" />
           )}
         </Button>
       </div>
+
     </div>
   )
 }

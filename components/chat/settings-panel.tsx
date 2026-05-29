@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Save, RotateCcw, Settings } from "lucide-react"
+import { X, Save, RotateCcw, Settings, Sliders, Type, Palette, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SettingsPanelProps {
-   isOpen: boolean
-   onClose: () => void
-   onSave: (settings: { fontFamily?: string; [key: string]: unknown }) => void
-   onFontChange?: (_font: string) => void
- }
+  isOpen: boolean
+  onClose: () => void
+  onSave: (settings: { fontFamily?: string; [key: string]: unknown }) => void
+  onFontChange?: (_font: string) => void
+}
 
 export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }: SettingsPanelProps) {
   const [systemPrompt, setSystemPrompt] = useState("")
@@ -21,7 +21,6 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    // Load settings
     const loadSettings = async () => {
       try {
         const response = await fetch("/api/settings")
@@ -65,10 +64,8 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
 
       const data = await response.json()
       
-      // Dispatch custom event to update theme immediately across all pages
       window.dispatchEvent(new CustomEvent("fyy-theme-change", { detail: themeStyle }))
       onSave(data.settings)
-      // Auto-close panel after successful save
       onClose()
     } catch (error) {
       console.error("Failed to save settings:", error)
@@ -93,231 +90,191 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose} />
+      {/* Backdrop overlay */}
+      <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md animate-fade-in" onClick={onClose} />
 
-      {/* Centered Modal */}
-      <div className="fixed inset-0 flex items-center justify-center z-[120] p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
-        <div className="theme-card w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+      {/* Modal Container */}
+      <div className="fixed inset-0 flex items-center justify-center z-[120] p-4 sm:p-6 animate-scale-in">
+        <div className="w-full max-w-xl max-h-[90vh] flex flex-col fyf-card bg-[#0E1324] border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+          
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border p-4 sm:p-6 flex-shrink-0">
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Settings className="w-5 h-5 text-primary" />
-              Settings
+          <div className="flex items-center justify-between border-b border-white/5 p-4 sm:p-5 flex-shrink-0">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Settings className="w-4 h-4 text-blue-400" />
+              Settings Panel
             </h2>
-            <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-              <X size={20} />
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-colors"
+            >
+              <X size={16} />
             </button>
           </div>
 
-          {/* Scrollable Content */}
-          <div className="p-4 sm:p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-          {/* System Prompt */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-foreground">
-              System Prompt
-              <p className="text-xs text-muted-foreground font-normal mt-1">
-                Define how FYY-AI behaves and responds. Be creative! (Optional - modes have default prompts)
-              </p>
-            </label>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              className="w-full h-40 px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder-muted-foreground outline-none focus:border-primary transition-colors resize-none"
-              placeholder="Enter custom system prompt..."
-            />
-          </div>
-
-          {/* Temperature */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-foreground">
-                Temperature: <span className="text-cyan-400">{temperature.toFixed(2)}</span>
+          {/* Settings scrollable area */}
+          <div className="p-4 sm:p-5 space-y-6 overflow-y-auto scrollbar-thin flex-1">
+            
+            {/* Section 1: System prompt */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sliders size={12} className="text-blue-400" />
+                System Prompt
               </label>
-              <p className="text-xs text-muted-foreground">Creativity (0 = Precise, 2 = Creative)</p>
+              <textarea
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                className="w-full h-24 px-3 py-2 bg-black/30 border border-white/5 rounded-xl text-xs sm:text-sm text-white placeholder-gray-600 outline-none focus:border-blue-500/50 resize-none"
+                placeholder="Instruct FYY-AI on how to act..."
+              />
             </div>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.1"
-              value={temperature}
-              onChange={(e) => setTemperature(Number.parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
 
-          {/* Max Tokens */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-foreground">
-                Max Tokens: <span className="text-cyan-400">{maxTokens}</span>
-              </label>
-              <p className="text-xs text-muted-foreground">Response length</p>
+            {/* Section 2: Model parameters */}
+            <div className="space-y-4 bg-white/[0.01] border border-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                <Sliders size={12} className="text-blue-400" />
+                Model Tuning
+              </div>
+
+              {/* Temperature */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Temperature</span>
+                  <span className="text-blue-400 font-bold">{temperature.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(Number.parseFloat(e.target.value))}
+                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+              </div>
+
+              {/* Max Tokens */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Response Length (Max Tokens)</span>
+                  <span className="text-blue-400 font-bold">{maxTokens}</span>
+                </div>
+                <input
+                  type="range"
+                  min="100"
+                  max="4000"
+                  step="100"
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(Number.parseInt(e.target.value))}
+                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+              </div>
             </div>
-            <input
-              type="range"
-              min="100"
-              max="4000"
-              step="100"
-              value={maxTokens}
-              onChange={(e) => setMaxTokens(Number.parseInt(e.target.value))}
-              className="w-full"
-            />
-          </div>
 
-          {/* Top P */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-foreground">
-                Top P: <span className="text-cyan-400">{topP.toFixed(2)}</span>
-              </label>
-              <p className="text-xs text-muted-foreground">Diversity (0 = Focused, 1 = Diverse)</p>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={topP}
-              onChange={(e) => setTopP(Number.parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
-
-          {/* Font Family */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-foreground">
+            {/* Section 3: Font Picker */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Type size={12} className="text-blue-400" />
                 Font Family
               </label>
-              <p className="text-xs text-muted-foreground">Choose your preferred font</p>
+              
+              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto scrollbar-thin">
+                {[
+                  { id: 'Inter', name: 'Inter', desc: 'Modern & Clean' },
+                  { id: 'Roboto', name: 'Roboto', desc: 'Highly Readable' },
+                  { id: 'Open Sans', name: 'Open Sans', desc: 'Humanist' },
+                  { id: 'Poppins', name: 'Poppins', desc: 'Geometric' },
+                  { id: 'Nunito', name: 'Nunito', desc: 'Friendly' },
+                  { id: 'Montserrat', name: 'Montserrat', desc: 'Elegant' },
+                ].map((font) => (
+                  <button
+                    key={font.id}
+                    onClick={() => {
+                      setFontFamily(font.id)
+                      const fontMap: Record<string, string> = {
+                        'Inter': 'Inter, sans-serif',
+                        'Roboto': 'Roboto, sans-serif',
+                        'Open Sans': 'Open Sans, sans-serif',
+                        'Poppins': 'Poppins, sans-serif',
+                        'Nunito': 'Nunito, sans-serif',
+                        'Montserrat': 'Montserrat, sans-serif',
+                      }
+                      document.body.style.fontFamily = fontMap[font.id] || 'Inter, sans-serif'
+                      if (onFontChange) {
+                        onFontChange(font.id)
+                      }
+                    }}
+                    className="p-2.5 rounded-xl border text-left transition-all duration-200"
+                    style={{
+                      background: fontFamily === font.id ? "rgba(37, 99, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
+                      borderColor: fontFamily === font.id ? "rgba(37, 99, 255, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                    }}
+                  >
+                    <div className="text-xs font-bold text-white">{font.name}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">{font.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
-              {[
-                { id: 'Inter', name: 'Inter', desc: 'Modern & Clean', style: 'font-inter' },
-                { id: 'Roboto', name: 'Roboto', desc: 'Friendly & Readable', style: 'font-roboto' },
-                { id: 'Open Sans', name: 'Open Sans', desc: 'Humanist & Warm', style: 'font-open-sans' },
-                { id: 'Lato', name: 'Lato', desc: 'Balanced & Professional', style: 'font-lato' },
-                { id: 'Poppins', name: 'Poppins', desc: 'Geometric & Modern', style: 'font-poppins' },
-                { id: 'Nunito', name: 'Nunito', desc: 'Rounded & Friendly', style: 'font-nunito' },
-                { id: 'Montserrat', name: 'Montserrat', desc: 'Narrow & Elegant', style: 'font-montserrat' },
-                { id: 'Ubuntu', name: 'Ubuntu', desc: 'Ubuntu Style', style: 'font-ubuntu' },
-                { id: 'Playfair Display', name: 'Playfair', desc: 'Serif & Classic', style: 'font-playfair' },
-                { id: 'Merriweather', name: 'Merriweather', desc: 'Book-like & Readable', style: 'font-merriweather' },
-              ].map((font) => (
-                <button
-                  key={font.id}
-                  onClick={() => {
-                    setFontFamily(font.id)
-                    // Apply font immediately when changed
-                    const fontMap: Record<string, string> = {
-                      'Inter': 'Inter, sans-serif',
-                      'Roboto': 'Roboto, sans-serif',
-                      'Open Sans': 'Open Sans, sans-serif',
-                      'Lato': 'Lato, sans-serif',
-                      'Poppins': 'Poppins, sans-serif',
-                      'Nunito': 'Nunito, sans-serif',
-                      'Montserrat': 'Montserrat, sans-serif',
-                      'Ubuntu': 'Ubuntu, sans-serif',
-                      'Playfair Display': 'Playfair Display, serif',
-                      'Merriweather': 'Merriweather, serif',
-                    }
-                    document.body.style.fontFamily = fontMap[font.id] || 'Inter, sans-serif'
-                    if (onFontChange) {
-                      onFontChange(font.id)
-                    }
-                  }}
-                  className={`p-3 rounded-lg border text-left transition-all duration-200 hover:scale-105 ${
-                    fontFamily === font.id
-                      ? 'bg-primary/20 border-primary text-primary shadow-lg'
-                      : 'bg-muted/50 border-border hover:bg-muted hover:border-primary/50'
-                  }`}
-                >
-                  <div className="text-sm font-medium" style={{
-                    fontFamily: font.id === 'Inter' ? 'Inter, sans-serif' :
-                               font.id === 'Roboto' ? 'Roboto, sans-serif' :
-                               font.id === 'Open Sans' ? '"Open Sans", sans-serif' :
-                               font.id === 'Lato' ? 'Lato, sans-serif' :
-                               font.id === 'Poppins' ? 'Poppins, sans-serif' :
-                               font.id === 'Nunito' ? 'Nunito, sans-serif' :
-                               font.id === 'Montserrat' ? 'Montserrat, sans-serif' :
-                               font.id === 'Ubuntu' ? 'Ubuntu, sans-serif' :
-                               font.id === 'Playfair Display' ? '"Playfair Display", serif' :
-                               font.id === 'Merriweather' ? 'Merriweather, serif' :
-                               'Inter, sans-serif'
-                  }}>
-                    {font.name}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1 truncate">
-                    {font.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Theme Style */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-foreground">
-                Design Style
+            {/* Section 4: Design Style Theme selector */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Palette size={12} className="text-blue-400" />
+                Design Theme Style
               </label>
-              <p className="text-xs text-muted-foreground">Change the overall look & feel</p>
+              
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'basic', name: 'Premium Dark', desc: 'Sleek & minimal' },
+                  { id: 'glass', name: 'Glassmorphism', desc: 'Frosted blur' },
+                  { id: 'neobrutalism', name: 'Brutalist', desc: 'Hard borders' },
+                ].map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => setThemeStyle(style.id)}
+                    className="p-2.5 rounded-xl border text-left transition-all duration-200"
+                    style={{
+                      background: themeStyle === style.id ? "rgba(37, 99, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
+                      borderColor: themeStyle === style.id ? "rgba(37, 99, 255, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                    }}
+                  >
+                    <div className="text-xs font-bold text-white">{style.name}</div>
+                    <div className="text-[9px] text-gray-500 mt-0.5 leading-snug">{style.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {[
-                { id: 'basic', name: 'Default/Basic', desc: 'Clean, modern, and professional', icon: '📱' },
-                { id: 'glass', name: 'Glassmorphism', desc: 'Translucent and futuristic with blur', icon: '✨' },
-                { id: 'neobrutalism', name: 'Neobrutalism', desc: 'Bold borders and hard shadows', icon: '🎨' },
-              ].map((style) => (
-                <button
-                  key={style.id}
-                  onClick={() => setThemeStyle(style.id)}
-                  className={`p-3 rounded-lg border text-left transition-all duration-200 flex items-center gap-3 ${
-                    themeStyle === style.id
-                      ? 'bg-primary/20 border-primary text-primary shadow-lg scale-[1.02]'
-                      : 'bg-muted/50 border-border hover:bg-muted hover:border-primary/50'
-                  }`}
-                >
-                  <span className="text-xl">{style.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold">{style.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{style.desc}</div>
-                  </div>
-                </button>
-              ))}
+
+            {/* Advice notice */}
+            <div className="flex items-start gap-2.5 p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+              <Info size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-[10px] text-blue-400/90 leading-relaxed">
+                Tip: Each AI Mode has optimized parameters by default. Saving these custom adjustments overrides defaults and saves them to your local preference database.
+              </p>
             </div>
+
           </div>
 
-          {/* Info Box */}
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-            <p className="text-sm text-blue-300">
-              Tip: Each AI Mode has optimized settings for its purpose. These custom settings override mode defaults
-              when provided. Changes are saved locally and applied to new conversations.
-            </p>
-          </div>
-        </div>
-
-          {/* Footer */}
-          <div className="border-t border-border p-4 sm:p-6 flex flex-col sm:flex-row gap-3 flex-shrink-0">
+          {/* Footer buttons */}
+          <div className="border-t border-white/5 p-4 flex gap-2 flex-shrink-0 bg-black/10">
             <Button
               onClick={handleReset}
-              variant="outline"
-              className="flex-1 bg-transparent border-border hover:bg-muted font-bold"
+              variant="ghost"
+              className="flex-1 text-xs border border-white/5 hover:bg-white/5 text-gray-400 font-bold rounded-xl h-10"
             >
-              <RotateCcw size={16} className="mr-2" />
+              <RotateCcw size={12} className="mr-1.5" />
               Reset Defaults
             </Button>
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+              className="fyf-btn-primary flex-1 text-xs font-bold rounded-xl h-10"
             >
-              <Save size={16} className="mr-2" />
+              <Save size={12} className="mr-1.5" />
               {isSaving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
+
         </div>
       </div>
     </>

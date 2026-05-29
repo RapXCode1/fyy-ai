@@ -8,106 +8,141 @@ interface LiveVoiceModalProps {
   aiTranscript?: string
 }
 
-export default function LiveVoiceModal({ state, onEndCall, onInterrupt, userTranscript, aiTranscript }: LiveVoiceModalProps) {
+export default function LiveVoiceModal({
+  state,
+  onEndCall,
+  onInterrupt,
+  userTranscript,
+  aiTranscript
+}: LiveVoiceModalProps) {
 
-  const getOrbStateClasses = () => {
+  const getOrbStateStyles = () => {
     switch (state) {
       case 'listening':
-        return "bg-cyan-500 shadow-cyan-500/50 scale-100"
+        return {
+          background: "linear-gradient(135deg, #2563FF, #1D4ED8)",
+          boxShadow: "0 0 40px rgba(37, 99, 255, 0.4)",
+          transform: "scale(1.0)"
+        }
       case 'thinking':
-        return "bg-amber-500 shadow-amber-500/50 scale-110 animate-spin-slow"
+        return {
+          background: "linear-gradient(135deg, #F59E0B, #D97706)",
+          boxShadow: "0 0 40px rgba(245, 158, 11, 0.4)",
+          transform: "scale(1.08)"
+        }
       case 'speaking':
-        return "bg-purple-500 shadow-purple-500/50 scale-125 animate-pulse"
+        return {
+          background: "linear-gradient(135deg, #8B5CF6, #7C3AED)",
+          boxShadow: "0 0 50px rgba(139, 92, 246, 0.5)",
+          transform: "scale(1.15)"
+        }
       default:
-        return "bg-muted shadow-muted/50 scale-90"
+        return {
+          background: "rgba(255, 255, 255, 0.05)",
+          boxShadow: "0 0 20px rgba(255, 255, 255, 0.02)",
+          transform: "scale(0.9)"
+        }
     }
   }
 
-  const getRippleClasses = () => {
+  const getRippleColor = () => {
     switch (state) {
-      case 'listening':
-        return "border-cyan-500/30 animate-ping-slow"
-      case 'thinking':
-        return "border-amber-500/30 animate-pulse"
-      case 'speaking':
-        return "border-purple-500/40 animate-ping"
-      default:
-        return "hidden"
+      case 'listening': return "border-blue-500/20"
+      case 'thinking': return "border-yellow-500/20"
+      case 'speaking': return "border-purple-500/30"
+      default: return "border-white/5"
     }
   }
 
   const getStateText = () => {
     switch (state) {
-      case 'listening': return "Listening..."
-      case 'thinking': return "Thinking..."
-      case 'speaking': return "Speaking..."
-      default: return "Connecting..."
+      case 'listening': return "FYY-AI is listening..."
+      case 'thinking': return "FYY-AI is thinking..."
+      case 'speaking': return "FYY-AI is speaking..."
+      default: return "Connecting live session..."
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-between p-8 sm:p-12 animate-in fade-in duration-300">
-
+    <div
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-between p-8 sm:p-12 animate-fade-in"
+      style={{
+        background: "rgba(6, 8, 22, 0.98)",
+        backdropFilter: "blur(30px)"
+      }}
+    >
       {/* Header */}
-      <div className="w-full text-center mt-8">
-        <h2 className="text-2xl font-bold text-foreground mb-2 flex items-center justify-center gap-2">
-          <Sparkles className="text-primary" />
-          FYY-AI Call
+      <div className="w-full text-center mt-6 space-y-2">
+        <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center justify-center gap-2">
+          <Sparkles size={14} className="text-blue-400" />
+          FYY-AI Voice Call
         </h2>
-        <div className="text-muted-foreground animate-pulse mb-3">
+        
+        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider animate-pulse-slow">
           {getStateText()}
-        </div>
-        <div className="inline-block px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-[10px] sm:text-xs text-primary/80 font-medium">
-          Note: Fitur ini masih dalam tahap eksperimental
+        </p>
+
+        <div className="inline-block px-3 py-1 bg-white/[0.02] border border-white/5 rounded-full text-[9px] text-gray-500 font-medium">
+          Experimental Native Speech Interface
         </div>
       </div>
 
-      {/* Center Orb / Waveform Visual */}
+      {/* Center visual shockwaves */}
       <div className="relative flex items-center justify-center flex-1 w-full max-w-md">
+        
+        {state !== 'idle' && (
+          <>
+            <div
+              className={`absolute w-36 h-36 sm:w-48 sm:h-48 rounded-full border-4 ${getRippleColor()} animate-ping-slow`}
+              style={{ animationDuration: state === 'speaking' ? '1.2s' : '3s' }}
+            />
+            <div
+              className={`absolute w-44 h-44 sm:w-60 sm:h-60 rounded-full border-2 ${getRippleColor()} animate-ping-slow`}
+              style={{ animationDuration: state === 'speaking' ? '1.8s' : '4s', animationDelay: '0.3s' }}
+            />
+          </>
+        )}
 
-        {/* Ripples / Shockwaves */}
-        <div className={`absolute w-32 h-32 md:w-48 md:h-48 rounded-full border-4 ${getRippleClasses()} opacity-50`} style={{ animationDuration: state === 'speaking' ? '1s' : '3s' }} />
-        <div className={`absolute w-40 h-40 md:w-64 md:h-64 rounded-full border-2 ${getRippleClasses()} opacity-30`} style={{ animationDuration: state === 'speaking' ? '1.5s' : '4s', animationDelay: '0.2s' }} />
-        <div className={`absolute w-48 h-48 md:w-80 md:h-80 rounded-full border ${getRippleClasses()} opacity-10`} style={{ animationDuration: state === 'speaking' ? '2s' : '5s', animationDelay: '0.4s' }} />
-
-        {/* Core Orb */}
+        {/* Central visual pulse orb button */}
         <button
-          className={`relative z-10 w-24 h-24 md:w-32 md:h-32 rounded-full shadow-[0_0_40px_rgba(0,0,0,0)] transition-all duration-700 ease-out flex items-center justify-center ${getOrbStateClasses()} ${state === 'speaking' ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-default'}`}
           onClick={() => state === 'speaking' && onInterrupt?.()}
-          title={state === 'speaking' ? "Tap to interrupt" : ""}
+          style={getOrbStateStyles()}
+          className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-full transition-all duration-500 ease-out flex items-center justify-center cursor-pointer select-none"
+          title={state === 'speaking' ? "Tap to interrupt speaking" : ""}
         >
-          <div className="w-1/2 h-1/2 rounded-full bg-white/20 blur-sm mix-blend-overlay animate-pulse pointer-events-none" />
+          <div className="w-1/2 h-1/2 rounded-full bg-white/10 blur-md pointer-events-none" />
         </button>
 
       </div>
 
-      {/* Subtitles / Context Area */}
-      <div className="w-full max-w-md h-24 mb-4 flex flex-col items-center justify-end text-center px-4">
+      {/* Subtitles Transcript display area */}
+      <div className="w-full max-w-md h-24 mb-6 flex flex-col items-center justify-end text-center px-4">
         {state === 'listening' && userTranscript && (
-          <p className="text-muted-foreground text-sm line-clamp-3 animate-in fade-in slide-in-from-bottom-2">
+          <p className="text-gray-400 text-xs sm:text-sm italic animate-fade-in line-clamp-3">
             "{userTranscript}..."
           </p>
         )}
-        {state === 'speaking' && (
-          <div className="flex flex-col items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-            <p className="text-foreground font-medium text-lg line-clamp-2">
+        
+        {state === 'speaking' && aiTranscript && (
+          <div className="space-y-1 animate-fade-in">
+            <p className="text-white text-sm sm:text-base font-semibold leading-relaxed line-clamp-3">
               {aiTranscript}
             </p>
-            <p className="text-xs text-muted-foreground/50 uppercase tracking-widest animate-pulse">
-              Tap orb to interrupt
+            <p className="text-[9px] text-gray-500 uppercase tracking-widest font-black">
+              Tap center orb to interrupt
             </p>
           </div>
         )}
       </div>
 
-      {/* Controls */}
-      <div className="w-full flex justify-center mb-8">
+      {/* Controls: Red End Call button */}
+      <div className="w-full flex justify-center mb-6">
         <button
           onClick={onEndCall}
-          className="bg-destructive hover:bg-destructive/90 text-destructive-foreground p-6 rounded-full shadow-2xl hover:shadow-destructive/50 transition-all hover:scale-105 active:scale-95 group"
-          title="End Call"
+          className="bg-red-600 hover:bg-red-700 text-white p-5 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
+          title="End Voice Session"
         >
-          <PhoneOff size={32} className="group-hover:rotate-12 transition-transform" />
+          <PhoneOff size={24} />
         </button>
       </div>
 

@@ -178,23 +178,53 @@ export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => 
     }
   }, [])
 
-  const speak = useCallback((text: string) => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel() // Stop any ongoing speech
-
-      // Clean Markdown
-      let cleanText = text
-        .replace(/```[\s\S]*?```/g, " (Berikut adalah blok kode) ") // Summarize code blocks
-        .replace(/[*_#`~>]/g, "") // Remove formatting characters
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Extract text from links
-        .replace(/-\s/g, "") // Remove list hyphens
-        .trim()
-
-      if (!cleanText) {
+  // Listen to native Android TTS events
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).onNativeTTSStart = () => {
+        setIsSpeaking(true)
+        options?.onStart?.()
+      }
+      (window as any).onNativeTTSEnd = () => {
         setIsSpeaking(false)
         options?.onEnd?.()
-        return
       }
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as any).onNativeTTSStart
+        delete (window as any).onNativeTTSEnd
+      }
+    }
+  }, [options])
+
+  const speak = useCallback((text: string) => {
+    // Clean Markdown
+    let cleanText = text
+      .replace(/```[\s\S]*?```/g, " (Berikut adalah blok kode) ") // Summarize code blocks
+      .replace(/[*_#`~>]/g, "") // Remove formatting characters
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Extract text from links
+      .replace(/-\s/g, "") // Remove list hyphens
+      .trim()
+
+    if (!cleanText) {
+      setIsSpeaking(false)
+      options?.onEnd?.()
+      return
+    }
+
+    // Check if running on Android native TTS
+    if (typeof window !== "undefined" && (window as any).AndroidTTS) {
+      try {
+        (window as any).AndroidTTS.speak(cleanText)
+        return
+      } catch (err) {
+        console.error("Native Android TTS failed, falling back to Web Speech:", err)
+      }
+    }
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel() // Stop any ongoing speech
 
       // Attempt to find the most natural male voice
       const voices = window.speechSynthesis.getVoices()
@@ -238,11 +268,22 @@ export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => 
   }, [options])
 
   const stop = useCallback(() => {
+    if (typeof window !== "undefined" && (window as any).AndroidTTS) {
+      try {
+        (window as any).AndroidTTS.stop()
+        setIsSpeaking(false)
+        options?.onEnd?.()
+        return
+      } catch (err) {
+        console.error("Native Android TTS stop failed:", err)
+      }
+    }
+
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel()
       setIsSpeaking(false)
     }
-  }, [])
+  }, [options])
 
   return {
     isSpeaking,

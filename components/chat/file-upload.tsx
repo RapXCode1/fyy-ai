@@ -1,6 +1,6 @@
 "use client"
 
-import { Paperclip, File, X, Download } from "lucide-react"
+import { Paperclip, File, X, Download, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFileUpload } from "@/hooks/use-file-upload"
 import { useState } from "react"
@@ -18,6 +18,7 @@ interface UploadedFile {
 export default function FileUpload({ onFileUpload }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [uploadError, setUploadError] = useState<string>("")
+  
   const { fileInputRef, isLoading, handleFileChange, triggerFileInput } = useFileUpload({
     maxSize: 50 * 1024 * 1024,
     acceptedTypes: ["image/*", "application/pdf", "text/*", "application/json"],
@@ -27,19 +28,18 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
         preview,
         id: Date.now().toString(),
       }
-      setUploadedFiles([...uploadedFiles, newFile])
-      setUploadError("") // Clear any previous errors
+      setUploadedFiles(prev => [...prev, newFile])
+      setUploadError("")
       onFileUpload?.(file, preview)
     },
     onError: (error) => {
       setUploadError(error)
-      // Auto-clear error after 5 seconds
       setTimeout(() => setUploadError(""), 5000)
     },
   })
 
   const handleRemoveFile = (id: string) => {
-    setUploadedFiles(uploadedFiles.filter((f) => f.id !== id))
+    setUploadedFiles(prev => prev.filter((f) => f.id !== id))
   }
 
   const handleDownloadFile = (file: File) => {
@@ -54,32 +54,38 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
   }
 
   return (
-    <div className="space-y-3 p-4 bg-card/50 rounded-lg border border-border">
+    <div className="p-4 bg-[#0E1324] rounded-2xl border border-white/5 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <label className="text-sm font-semibold text-foreground">Upload Files</label>
-          <p className="text-xs text-muted-foreground">Images, PDFs, Documents (max 25MB)</p>
+          <label className="text-xs font-bold text-white uppercase tracking-wider">Attachment Hub</label>
+          <p className="text-[10px] text-gray-500 mt-0.5">Images, PDFs, JSON or TXT documents (Max 50MB)</p>
         </div>
+        
         <Button
           onClick={triggerFileInput}
           disabled={isLoading}
           variant="ghost"
-          size="sm"
-          className="hover:bg-muted disabled:opacity-50"
+          className="h-8 px-3 text-xs bg-white/5 hover:bg-white/10 text-white rounded-xl flex items-center gap-1.5"
         >
           {isLoading ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+            <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent" />
           ) : (
-            <Paperclip size={16} />
+            <>
+              <Paperclip size={12} />
+              <span>Select File</span>
+            </>
           )}
         </Button>
       </div>
 
-      {/* Error Display */}
+      {/* Error Info */}
       {uploadError && (
-        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-          <p className="text-sm text-destructive font-medium">Upload Error</p>
-          <p className="text-xs text-destructive/80 mt-1">{uploadError}</p>
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-2">
+          <AlertCircle size={14} className="text-red-400 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs text-red-400 font-semibold">Upload Error</p>
+            <p className="text-[10px] text-red-400/80 mt-0.5">{uploadError}</p>
+          </div>
         </div>
       )}
 
@@ -90,64 +96,69 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
         onChange={(e) => {
           const files = Array.from(e.target.files || [])
           files.forEach(file => handleFileChange(file))
-          // Reset input
           e.target.value = ""
         }}
         className="hidden"
         accept="image/*,.pdf,.txt,.json,.doc,.docx"
       />
 
+      {/* Uploaded items container */}
       {uploadedFiles.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground font-medium">
-              {uploadedFiles.length} file{uploadedFiles.length !== 1 ? "s" : ""} uploaded
+        <div className="space-y-2 border-t border-white/5 pt-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
+              Uploaded Items ({uploadedFiles.length})
             </p>
             <button
               onClick={() => setUploadedFiles([])}
-              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-              title="Clear all files"
+              className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
             >
               Clear all
             </button>
           </div>
-          {uploadedFiles.map(({ file, preview, id }) => (
-            <div key={id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition border border-border/50">
-              {preview && file.type.startsWith("image/") ? (
-                <img
-                  src={preview || "/placeholder.svg"}
-                  alt={file.name}
-                  className="w-10 h-10 rounded object-cover flex-shrink-0 border border-border/30"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center flex-shrink-0 border border-cyan-500/30">
-                  <File size={16} className="text-cyan-400" />
+
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {uploadedFiles.map(({ file, preview, id }) => (
+              <div
+                key={id}
+                className="flex items-center gap-3 p-2.5 bg-black/40 rounded-xl border border-white/5 hover:border-white/10 transition-all"
+              >
+                {preview && file.type.startsWith("image/") ? (
+                  <img
+                    src={preview}
+                    alt={file.name}
+                    className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-white/10"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                    <File size={13} className="text-blue-400" />
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">{file.name}</p>
+                  <p className="text-[9px] text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
-              )}
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-                <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleDownloadFile(file)}
+                    className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-blue-400 rounded-lg transition-colors"
+                    title="Download item"
+                  >
+                    <Download size={12} />
+                  </button>
+                  <button
+                    onClick={() => handleRemoveFile(id)}
+                    className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
+                    title="Delete item"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               </div>
-
-              <div className="flex gap-1 flex-shrink-0">
-                <button
-                  onClick={() => handleDownloadFile(file)}
-                  className="p-1.5 hover:bg-cyan-500/20 rounded transition"
-                  title="Download file"
-                >
-                  <Download size={12} className="text-cyan-400" />
-                </button>
-                <button
-                  onClick={() => handleRemoveFile(id)}
-                  className="p-1.5 hover:bg-destructive/20 rounded transition"
-                  title="Remove file"
-                >
-                  <X size={12} className="text-destructive" />
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

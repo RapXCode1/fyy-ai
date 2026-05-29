@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Settings, Menu, X, Sparkles, Download, FileJson, FileText, FileCode2 } from "lucide-react"
+import { Settings, Menu, X, Sparkles, Download, FileJson, FileText, FileCode2, Sliders, Cpu, Brain, Layers } from "lucide-react"
 import ChatSidebar from "@/components/chat/chat-sidebar"
 import MessageList from "@/components/chat/message-list"
 import QuickPrompts from "@/components/chat/quick-prompts"
@@ -93,46 +93,6 @@ export default function ChatPage() {
   const [selectedFont, setSelectedFont] = useState("Inter")
   const [showSyncBanner, setShowSyncBanner] = useState(false)
 
-  // Capacitor Deep Linking - Sync clerk session when opened via fyyai://sync?client_token=xxx&session_token=yyy
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handleAppUrlOpen = async (event: any) => {
-        try {
-          const urlStr = event.url;
-          if (urlStr.startsWith("fyyai://sync")) {
-            const url = new URL(urlStr.replace("fyyai://", "https://"));
-            const clientToken = url.searchParams.get("client_token");
-            const sessionToken = url.searchParams.get("session_token");
-
-            if (sessionToken) {
-              // Set Clerk cookies on Webview directly
-              document.cookie = `__session=${decodeURIComponent(sessionToken)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
-
-              if (clientToken) {
-                document.cookie = `__client=${decodeURIComponent(clientToken)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
-              }
-
-              // Clear guest cookie
-              document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-
-              // Force reload to log in
-              window.location.reload();
-            }
-          }
-        } catch (e) {
-          console.error("Deep link sync error:", e);
-        }
-      };
-
-      // Listen to Capacitor App events safely
-      import("@capacitor/app").then(({ App }) => {
-        App.addListener("appUrlOpen", handleAppUrlOpen);
-      }).catch((err) => {
-        console.log("Capacitor App listener not active (standard web mode)", err);
-      });
-    }
-  }, []);
-
   // Sync Banner detector for standard mobile browsers
   useEffect(() => {
     if (typeof window !== "undefined" && isClient) {
@@ -156,7 +116,6 @@ export default function ChatPage() {
 
   const { speak, isSpeaking, stop: stopSpeech } = useSpeechOutput({
     onEnd: () => {
-      // When AI finishes speaking, if we are in live mode, restart listening
       if (isLiveMode) {
         setLiveModeTrigger(prev => prev + 1)
       }
@@ -189,7 +148,6 @@ export default function ChatPage() {
         const savedFont = data.fontFamily || "Inter"
         setSelectedFont(savedFont)
 
-        // Apply font immediately on load
         const fontMap: Record<string, string> = {
           'Inter': 'Inter, sans-serif',
           'Roboto': 'Roboto, sans-serif',
@@ -225,7 +183,6 @@ export default function ChatPage() {
       'Merriweather': 'Merriweather, serif',
     }
 
-    // Apply font immediately
     document.body.style.fontFamily = fontMap[selectedFont] || 'Inter, sans-serif'
   }, [selectedFont])
 
@@ -234,15 +191,12 @@ export default function ChatPage() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element
 
-      // Check if the click is on a Radix UI portal (like Select dropdown, Dialog, etc.)
-      // These elements are rendered outside the main panel hierarchy
       const isPortal = target.closest('[data-radix-portal]') ||
         target.closest('[role="listbox"]') ||
         target.closest('[role="option"]') ||
         target.closest('[data-radix-select-viewport]') ||
         target.closest('[data-state]');
 
-      // Close model selector and modes selector when clicking outside
       if (!target.closest('[data-panel-trigger]') && !target.closest('[data-panel]') && !isPortal) {
         setShowModelSelector(false)
         setShowModesSelector(false)
@@ -250,8 +204,6 @@ export default function ChatPage() {
         setShowExportMenu(false)
       }
 
-      // For image generator, only close when clicking outside the image generator panel itself
-      // This allows all interactions within the panel (including dropdowns) to keep it open
       if (showImageGenerator) {
         const imageGeneratorPanel = document.querySelector('[data-panel]:has(.w-full.max-w-2xl)')
         if (imageGeneratorPanel && !imageGeneratorPanel.contains(target) && !target.closest('[data-panel-trigger]') && !isPortal) {
@@ -342,12 +294,10 @@ export default function ChatPage() {
               }))
             }))
 
-            // Merge remote conversations with local, deduplicating by conversation ID
             setConversations(prev => {
               const combined = [...parsedConversations, ...prev]
               const uniqueMap = new Map()
               combined.forEach(conv => {
-                // If collision, prefer remote/newer
                 uniqueMap.set(conv.id, conv)
               })
               const unique = Array.from(uniqueMap.values())
@@ -360,7 +310,6 @@ export default function ChatPage() {
               return sorted
             })
 
-            // Set current conversation if none was loaded from local storage
             if (!currentConversationId && parsedConversations.length > 0) {
               const mostRecent = parsedConversations[0]
               setCurrentConversationId(mostRecent.id)
@@ -530,7 +479,6 @@ export default function ChatPage() {
   const handleSendMessage = async (content: string, attachments?: Array<{ type: string, url?: string, name: string, size: number }>) => {
     if (!content.trim() && (!attachments || attachments.length === 0)) return
 
-    // Check for owner activation code
     if (content.includes("FYY3257")) {
       localStorage.setItem("fyy_owner_mode", "true")
       setIsOwner(true)
@@ -547,7 +495,6 @@ export default function ChatPage() {
       setGuestChatsCount(chatsCount + 1)
     }
 
-    // Auto-close all open panels when sending a message (except image generator)
     setShowModelSelector(false)
     setShowModesSelector(false)
     setShowSettings(false)
@@ -566,7 +513,6 @@ export default function ChatPage() {
     setIsLoading(true)
     setIsReceiving(true)
 
-    // Create a new conversation if this is the first message
     if (!currentConversationId) {
       const newConversation: Conversation = {
         id: Date.now().toString(),
@@ -579,7 +525,6 @@ export default function ChatPage() {
       setConversations([newConversation, ...conversations])
       setCurrentConversationId(newConversation.id)
     } else {
-      // Update existing conversation
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === currentConversationId
@@ -606,7 +551,6 @@ export default function ChatPage() {
 
     setMessages((prev) => [...prev, assistantMessage])
 
-    // Update conversation immediately with empty assistant message
     if (currentConversationId) {
       setConversations((prev) =>
         prev.map((conv) =>
@@ -617,13 +561,11 @@ export default function ChatPage() {
 
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(new Error("Timeout")), 90000) // 90 second timeout
+      const timeoutId = setTimeout(() => controller.abort(new Error("Timeout")), 90000)
 
       const allMessages = [...messages, userMessage]
       let payloadMessages = allMessages
 
-      // Token optimization for Live Voice Mode: 
-      // Only send the last 10 messages (5 conversational turns) to prevent hitting TPM limits rapidly
       if (isLiveModeRef.current && allMessages.length > 10) {
         payloadMessages = allMessages.slice(-10)
       }
@@ -648,12 +590,10 @@ export default function ChatPage() {
 
       clearTimeout(timeoutId)
 
-      // Check for fallback notification from headers
       const isFallback = response.headers.get("X-Model-Fallback") === "true"
       const usedModelId = response.headers.get("X-Model-Used")
 
       if (isFallback && usedModelId) {
-        // Show a temporary notification
         const modelName = models.find(m => m.id === usedModelId)?.name || "Llama 3.1 8B"
         const notification = document.createElement('div')
         notification.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-amber-500 text-white px-4 py-2 rounded-full shadow-2xl font-bold animate-in slide-in-from-top-4 duration-300 flex items-center gap-2'
@@ -669,26 +609,23 @@ export default function ChatPage() {
         const errorData = await response.json().catch(() => ({}))
         let errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`
 
-        // Improve error message for the user
         if (response.status === 429) {
-          errorMessage = "Waduh, kuota model ini lagi habis (Rate Limit)! Coba lagi sebentar lagi atau ganti ke model lain ya."
+          errorMessage = "Rate limit reached. Please wait a moment or try another model."
         } else if (response.status === 400) {
-          errorMessage = "Ada masalah dengan permintaanmu (Bad Request). Coba refresh halamannya ya."
+          errorMessage = "Bad request. Please check input parameters or refresh."
         } else if (response.status === 500) {
-          errorMessage = "Server lagi pusing (Internal Error). Tunggu sebentar lalu coba lagi ya."
+          errorMessage = "Internal server error. Our AI is resting. Please try again."
         }
 
         throw new Error(errorMessage)
       }
 
-      // Handle streaming response
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
 
       if (!reader) throw new Error("No response body")
 
       let accumulatedContent = ""
-
       let buffer = ""
       while (true) {
         const { done, value } = await reader.read()
@@ -696,7 +633,7 @@ export default function ChatPage() {
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split("\n")
-        buffer = lines.pop() || "" // Keep partial line for next chunk
+        buffer = lines.pop() || ""
 
         let chunkContent = ""
         for (const line of lines) {
@@ -722,7 +659,6 @@ export default function ChatPage() {
         }
       }
 
-      // Update conversation with the final accumulated content after streaming is done
       if (currentConversationId) {
         setConversations((prev) =>
           prev.map((conv) =>
@@ -738,14 +674,12 @@ export default function ChatPage() {
         )
       }
 
-      // Auto-speak in Live Mode, but only if the user hasn't ended the call during the fetch
       if (isLiveModeRef.current) {
         speak(accumulatedContent)
       }
 
     } catch (error) {
       console.error("Error sending message:", error)
-
       let errorMessage = "Sorry, something went wrong. Please try again."
 
       if (error instanceof Error) {
@@ -787,7 +721,6 @@ export default function ChatPage() {
 
   const handleVoiceEnd = () => {
     if (isLiveMode) {
-      // Small timeout to ensure input state has caught up with the final transcript
       setTimeout(() => {
         const textArea = document.querySelector('textarea') as HTMLTextAreaElement
         const finalInput = textArea ? textArea.value : ""
@@ -795,10 +728,9 @@ export default function ChatPage() {
         if (finalInput.trim()) {
           handleSendMessage(finalInput)
         } else {
-          // If empty, restart listening
           setLiveModeTrigger(prev => prev + 1)
         }
-      }, 500) // 500ms is enough for React to render the final transcript into the textarea
+      }, 500)
     }
   }
 
@@ -809,7 +741,6 @@ export default function ChatPage() {
       )
     )
 
-    // Update conversation if it exists
     if (currentConversationId) {
       setConversations((prev) =>
         prev.map((conv) =>
@@ -833,16 +764,12 @@ export default function ChatPage() {
     const message = messages[messageIndex]
 
     if (message.role === "assistant") {
-      // For assistant messages: regenerate the response
-      // Find the user message that prompted this assistant response
       const userMessage = messages[messageIndex - 1]
       if (!userMessage || userMessage.role !== "user") return
 
-      // Remove the assistant message and any subsequent messages
       const newMessages = messages.slice(0, messageIndex)
       setMessages(newMessages)
 
-      // Update conversation
       if (currentConversationId) {
         setConversations((prev) =>
           prev.map((conv) =>
@@ -853,15 +780,11 @@ export default function ChatPage() {
         )
       }
 
-      // Regenerate the response
       await handleSendMessage(userMessage.content)
     } else if (message.role === "user") {
-      // For user messages: resend the same message to get a new response
-      // Remove all messages after this user message
       const newMessages = messages.slice(0, messageIndex + 1)
       setMessages(newMessages)
 
-      // Update conversation
       if (currentConversationId) {
         setConversations((prev) =>
           prev.map((conv) =>
@@ -872,7 +795,6 @@ export default function ChatPage() {
         )
       }
 
-      // Send the message again
       await handleSendMessage(message.content)
     }
   }
@@ -890,7 +812,14 @@ export default function ChatPage() {
     : undefined
 
   return (
-    <div className={`fixed inset-0 flex h-[100dvh] w-screen bg-background overflow-hidden relative ${selectedFont === 'Inter' ? 'font-sans' : ''}`} style={{ fontFamily: selectedFont !== 'Inter' ? selectedFont : undefined }}>
+    <div
+      className={`fixed inset-0 flex h-[100dvh] w-screen overflow-hidden relative ${selectedFont === 'Inter' ? 'font-sans' : ''}`}
+      style={{
+        fontFamily: selectedFont !== 'Inter' ? selectedFont : undefined,
+        background: "#060816",
+        color: "#F9FAFB"
+      }}
+    >
       <HeroWelcomeAnimation />
 
       {/* Full-Screen Live Voice Modal */}
@@ -904,7 +833,6 @@ export default function ChatPage() {
           onInterrupt={() => {
             if (isSpeaking) {
               stopSpeech()
-              // Explicitly trigger the next listening cycle since the last chunk's event might not fire if it was canceled in the queue
               setLiveModeTrigger(prev => prev + 1)
             }
           }}
@@ -921,137 +849,144 @@ export default function ChatPage() {
         onNewChat={handleNewChat}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
-        onClose={() => setSidebarOpen(!sidebarOpen)}
+        onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full overflow-x-hidden relative z-10">
-        {/* Enhanced Header with Theme Awareness */}
-        <div className="chat-header px-3 sm:px-4 pt-1 sm:pt-2 pb-1 sm:pb-2 flex items-center justify-between relative z-20 min-h-[48px] sm:min-h-[56px] transition-all duration-500 bg-background/80 backdrop-blur-md">
-          {/* Theme-specific accent background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-secondary/10 opacity-50" />
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-
-          <div className="flex items-center gap-3 relative z-10 flex-shrink-0 min-w-0 flex-1">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full relative z-10">
+        
+        {/* Enhanced Header */}
+        <div
+          className="chat-header px-4 py-3 flex items-center justify-between relative z-20 border-b transition-all duration-300"
+          style={{
+            background: "rgba(6, 8, 22, 0.8)",
+            backdropFilter: "blur(20px)",
+            borderColor: "rgba(255, 255, 255, 0.05)"
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-muted/80 rounded-lg transition-all duration-200 group relative overflow-hidden flex-shrink-0"
+              className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-              {sidebarOpen ?
-                <X size={18} className="text-muted-foreground group-hover:text-red-500 transition-all duration-300 relative z-10" /> :
-                <Menu size={18} className="text-muted-foreground group-hover:text-cyan-500 transition-all duration-300 relative z-10" />
-              }
+              {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
             </button>
-            <div className="animate-fade-in flex items-center gap-2 min-w-0 flex-1 overflow-hidden max-w-[200px] sm:max-w-[250px]">
-              <div className="w-8 h-8 rounded bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center border border-cyan-400/30 overflow-hidden flex-shrink-0">
-                <img src="/logo.png" alt="FYY-AI Logo" className="w-6 h-6 object-contain" />
+            
+            <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+              <div className="w-7 h-7 rounded-lg fyf-gradient-bg flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-black">F</span>
               </div>
               <div className="flex flex-col min-w-0">
-                <h1 className="text-lg sm:text-xl fyy-identity tracking-tighter text-foreground bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent hover:from-cyan-500 hover:via-purple-500 hover:to-pink-500 transition-all duration-500 cursor-default leading-none truncate pr-2">
+                <h1 className="text-sm font-bold tracking-tight text-white leading-none">
                   FYY-AI
                 </h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground font-medium hover:text-cyan-400 transition-colors duration-300 leading-none truncate mt-0.5">
-                  {models.find(m => m.id === selectedModel)?.name || selectedModel.replace(/-/g, " ").toUpperCase()}
+                <p className="text-[10px] text-gray-500 mt-0.5 leading-none truncate">
+                  {models.find(m => m.id === selectedModel)?.name || "FYY Model"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-0.5 sm:gap-1 relative z-10 flex-shrink-0 min-w-0">
-            {/* AI Tools Group with Enhanced Styling */}
-            <div className="flex items-center bg-muted/20 rounded-lg sm:rounded-xl p-1 sm:p-1.5 backdrop-blur-md border border-border/20 shadow-lg shadow-black/5" data-panel-trigger>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* AI Settings Capsule */}
+            <div className="flex items-center bg-white/[0.02] border border-white/5 rounded-xl p-1">
               <button
                 onClick={() => setShowModesSelector(!showModesSelector)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${showModesSelector ? "bg-primary text-primary-foreground shadow-lg" : "hover:bg-muted/50 text-foreground"
-                  }`}
-                title="AI Mode"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                  showModesSelector ? "bg-blue-600 text-white" : "hover:bg-white/5 text-gray-400 hover:text-white"
+                }`}
                 data-panel-trigger
               >
-                <span className="text-sm sm:text-base">{AI_MODES.find(m => m.id === selectedMode)?.icon || "🤖"}</span>
-                <span className="text-xs font-bold hidden md:inline uppercase tracking-tight">
+                <span className="text-xs">{AI_MODES.find(m => m.id === selectedMode)?.icon || "🤖"}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">
                   {AI_MODES.find(m => m.id === selectedMode)?.name.split(' ')[0] || "General"}
                 </span>
               </button>
+
               <button
                 onClick={() => setShowModelSelector(!showModelSelector)}
-                className={`p-2 sm:p-2.5 rounded-lg transition-all duration-200 ${showModelSelector ? "bg-secondary text-secondary-foreground shadow-lg" : "hover:bg-muted/50"
-                  }`}
-                title="AI Model"
+                className={`p-1.5 rounded-lg transition-all duration-200 ${
+                  showModelSelector ? "bg-white/10 text-white" : "hover:bg-white/5 text-gray-400"
+                }`}
+                title="Select Model"
                 data-panel-trigger
               >
-                <span className="text-sm sm:text-base relative z-10">🧠</span>
+                <Cpu size={14} />
               </button>
+
               <button
                 onClick={() => setShowImageGenerator(!showImageGenerator)}
-                className={`p-2 sm:p-2.5 rounded-lg transition-all duration-200 ${showImageGenerator ? "bg-accent text-accent-foreground shadow-lg" : "hover:bg-muted/50"
-                  }`}
-                title="Image Generator"
+                className={`p-1.5 rounded-lg transition-all duration-200 ${
+                  showImageGenerator ? "bg-white/10 text-white" : "hover:bg-white/5 text-gray-400"
+                }`}
+                title="Image Studio"
                 data-panel-trigger
               >
-                <Sparkles size={16} className="relative z-10" />
+                <Sparkles size={14} />
               </button>
             </div>
 
-            {/* Settings Group with Enhanced Styling */}
-            <div className="flex items-center bg-muted/20 rounded-lg sm:rounded-xl p-1 sm:p-1.5 backdrop-blur-md border border-border/20 shadow-lg shadow-black/5 ml-1 sm:ml-2" data-panel-trigger>
+            {/* Utility buttons */}
+            <div className="flex items-center bg-white/[0.02] border border-white/5 rounded-xl p-1">
               <ThemeToggle />
+              
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="p-2 sm:p-2.5 hover:bg-muted/50 rounded-lg transition-all duration-200"
+                  className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
                   title="Export Chat"
                 >
-                  <Download size={18} className="relative z-10 text-muted-foreground hover:text-cyan-400 transition-colors" />
+                  <Download size={14} />
                 </button>
+                
                 {showExportMenu && (
-                  <div className="absolute right-0 mt-2 w-48 theme-card border border-border/50 shadow-2xl rounded-xl overflow-hidden animate-in slide-in-from-top-2 duration-200 z-[100]">
-                    <div className="p-2 space-y-1">
-                      <button onClick={handleExportAsJSON} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-muted/80 rounded-lg transition-colors group">
-                        <FileJson size={16} className="text-muted-foreground group-hover:text-cyan-400" /> JSON Format
-                      </button>
-                      <button onClick={handleExportAsMarkdown} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-muted/80 rounded-lg transition-colors group">
-                        <FileCode2 size={16} className="text-muted-foreground group-hover:text-purple-400" /> Markdown
-                      </button>
-                      <button onClick={handleExportAsText} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-muted/80 rounded-lg transition-colors group">
-                        <FileText size={16} className="text-muted-foreground group-hover:text-amber-400" /> Plain Text
-                      </button>
-                    </div>
+                  <div className="absolute right-0 mt-2 w-44 bg-[#0E1324] border border-white/5 shadow-2xl rounded-2xl overflow-hidden z-[100] p-1.5 space-y-1">
+                    <button onClick={handleExportAsJSON} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors">
+                      <FileJson size={12} className="text-gray-400" /> Export JSON
+                    </button>
+                    <button onClick={handleExportAsMarkdown} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors">
+                      <FileCode2 size={12} className="text-gray-400" /> Export Markdown
+                    </button>
+                    <button onClick={handleExportAsText} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors">
+                      <FileText size={12} className="text-gray-400" /> Export Text
+                    </button>
                   </div>
                 )}
               </div>
+
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 sm:p-2.5 rounded-lg transition-all duration-200 ${showSettings ? "bg-muted text-foreground" : "hover:bg-muted/50"
-                  }`}
+                className={`p-1.5 rounded-lg transition-all duration-200 ${
+                  showSettings ? "bg-white/10 text-white" : "hover:bg-white/5 text-gray-400"
+                }`}
                 title="Settings"
                 data-panel-trigger
               >
-                <Settings size={16} className="relative z-10" />
+                <Settings size={14} />
               </button>
             </div>
           </div>
         </div>
 
         {showSyncBanner && (
-          <div className="mx-4 mt-3 mb-1 p-3 rounded-xl border border-cyan-500/30 bg-card/60 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-in slide-in-from-top duration-500 z-30">
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/5 to-pink-500/10 opacity-70" />
+          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl border border-blue-500/20 bg-[#0E1324]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-fade-up z-30">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5" />
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-2.5">
-              <span className="text-xl">📲</span>
+              <span className="text-lg">📲</span>
               <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-bold text-white tracking-wide">
-                  Sesi Login Kamu Aktif di Web!
+                <span className="text-xs font-bold text-white">
+                  Active Web Login Detected!
                 </span>
-                <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-                  Sinkronkan sesi ini langsung ke Aplikasi FYY-AI di HP kamu agar tidak perlu login ulang.
+                <span className="text-[10px] text-gray-400 mt-0.5">
+                  Synchronize this session directly with the FYY-AI Android App to skip logging in again.
                 </span>
               </div>
             </div>
+            
             <div className="relative z-10 flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={async () => {
                   try {
-                    // Ambil token sesi aktif langsung dari Clerk SDK (Aman dari proteksi HttpOnly cookie!)
                     let sessionToken = null;
                     if (session) {
                       sessionToken = await session.getToken();
@@ -1059,7 +994,6 @@ export default function ChatPage() {
                       sessionToken = await getToken();
                     }
 
-                    // Fallback ke pembacaan cookie jika SDK belum sepenuhnya siap
                     if (!sessionToken) {
                       const getCookie = (name: string) => {
                         const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -1071,31 +1005,31 @@ export default function ChatPage() {
                     if (sessionToken) {
                       window.location.href = `fyyai://sync?session_token=${encodeURIComponent(sessionToken)}`;
                     } else {
-                      alert("Gagal menyinkronkan. Sesi login kamu tidak terdeteksi atau sudah kedaluwarsa.");
+                      alert("Unable to sync. Please re-sign in on the web.");
                     }
                   } catch (err) {
                     console.error("Session sync failed:", err);
-                    alert("Terjadi kesalahan saat mengambil token sesi.");
+                    alert("Error retrieving session credentials.");
                   }
                 }}
-                className="py-1.5 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold text-xs tracking-wide transition-all duration-300 cursor-pointer flex items-center gap-1 shadow-md shadow-purple-500/10 hover:scale-102"
+                className="py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all duration-300 shadow-md shadow-blue-500/15"
               >
-                Sinkronkan ke App
+                Sync to Mobile App
               </button>
               <button
                 onClick={() => setShowSyncBanner(false)}
-                className="p-1.5 hover:bg-white/10 rounded-lg text-muted-foreground hover:text-white transition"
+                className="p-1 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition"
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </div>
           </div>
         )}
 
-        {/* Unified Modal Backdrop */}
+        {/* Backdrop modals */}
         {(showModesSelector || showModelSelector || showImageGenerator || showQuickPrompts) && (
           <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] animate-in fade-in duration-300"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] animate-fade-in"
             onClick={() => {
               setShowModesSelector(false);
               setShowModelSelector(false);
@@ -1106,8 +1040,8 @@ export default function ChatPage() {
         )}
 
         {showQuickPrompts && (
-          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200" data-panel>
-            <div className="theme-card p-6 w-full max-w-md shadow-2xl">
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
+            <div className="w-full max-w-md bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
               <QuickPrompts
                 onSelect={(prompt) => { setInput(prompt); setShowQuickPrompts(false); }}
                 onClose={() => setShowQuickPrompts(false)}
@@ -1117,11 +1051,18 @@ export default function ChatPage() {
         )}
 
         {showModesSelector && (
-          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200" data-panel>
-            <div className="theme-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
+            <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Pilih Mode AI</h2>
-                <button onClick={() => setShowModesSelector(false)} className="p-2 hover:bg-muted rounded-full transition-colors"><X size={20} /></button>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Layers size={14} className="text-blue-400" /> Choose AI Mode
+                </h2>
+                <button
+                  onClick={() => setShowModesSelector(false)}
+                  className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
               </div>
               <ModesSelector selectedMode={selectedMode} onModeChange={(mode) => { handleModeChange(mode); setShowModesSelector(false); }} />
             </div>
@@ -1129,11 +1070,18 @@ export default function ChatPage() {
         )}
 
         {showModelSelector && (
-          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200" data-panel>
-            <div className="theme-card p-6 w-full max-w-md shadow-2xl">
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
+            <div className="w-full max-w-md bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Pilih Model</h2>
-                <button onClick={() => setShowModelSelector(false)} className="p-2 hover:bg-muted rounded-full transition-colors"><X size={20} /></button>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Brain size={14} className="text-blue-400" /> Choose Intelligence Model
+                </h2>
+                <button
+                  onClick={() => setShowModelSelector(false)}
+                  className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
               </div>
               <ModelSelector
                 models={models}
@@ -1152,11 +1100,18 @@ export default function ChatPage() {
         )}
 
         {showImageGenerator && (
-          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-in fade-in zoom-in-95 duration-200" data-panel>
-            <div className="theme-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
+            <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Image Studio</h2>
-                <button onClick={() => setShowImageGenerator(false)} className="p-2 hover:bg-muted rounded-full transition-colors"><X size={20} /></button>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sparkles size={14} className="text-blue-400" /> AI Image Studio
+                </h2>
+                <button
+                  onClick={() => setShowImageGenerator(false)}
+                  className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
               </div>
               <ImageGenerator
                 onClose={() => setShowImageGenerator(false)}
@@ -1166,52 +1121,53 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Enhanced Messages Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        {/* Enhanced Messages View */}
+        <div className="flex-1 flex flex-col min-h-0 relative">
           {messages.length === 0 && !isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-fade-in">
-              <div className="mb-6">
-                <div className="w-20 h-20 bg-card border border-border rounded-full flex items-center justify-center mb-4 shadow-lg overflow-hidden">
-                  <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12 max-w-lg mx-auto space-y-6">
+              
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl fyf-gradient-bg flex items-center justify-center shadow-2xl">
+                  <span className="text-white text-2xl font-black">F</span>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                Welcome to FYY-AI
-              </h3>
-              <p className="text-gray-300 mb-6 max-w-md text-sm leading-relaxed animate-fade-in" style={{ animationDelay: '0.6s' }}>
-                Start a conversation with our AI assistant. Choose your model and mode to get started.
-              </p>
-              <div className="flex gap-4 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+              
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-white">Experience Premium Intelligence</h2>
+                <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+                  Start writing, thinking, generating high quality code, or analyzing files instantly with FYY-AI.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 justify-center w-full max-w-md pt-2">
                 <button
                   onClick={handleNewChat}
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white rounded-lg hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-110 hover:brightness-110 font-medium transform-gpu"
+                  className="fyf-btn-primary px-5 py-2.5 rounded-xl text-xs font-semibold"
                 >
-                  🚀 Start New Chat
+                  Start New Session
                 </button>
                 <button
                   onClick={() => setShowModelSelector(true)}
-                  className="px-4 py-3 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-all duration-300"
+                  className="fyf-btn-ghost px-5 py-2.5 rounded-xl text-xs font-semibold"
                 >
-                  ⚙️ Choose Model
+                  Choose Model
                 </button>
               </div>
+
             </div>
           ) : (
-            <div className="animate-fade-in">
-              <MessageList
-                messages={messages}
-                isLoading={isLoading}
-                conversationTitle=""
-                onEditMessage={handleEditMessage}
-                onRegenerateMessage={handleRegenerateMessage}
-              />
-              <div ref={messagesEndRef} />
-            </div>
+            <MessageList
+              messages={messages}
+              isLoading={isLoading}
+              conversationTitle=""
+              onEditMessage={handleEditMessage}
+              onRegenerateMessage={handleRegenerateMessage}
+            />
           )}
         </div>
 
-        {/* Input Area with Theme Awareness */}
-        <div className="chat-input-area px-2 sm:px-4 pb-2 sm:pb-4 pt-1 relative z-20 transition-all duration-500 mb-[env(safe-area-inset-bottom)]">
+        {/* Input Area */}
+        <div className="py-3 bg-gradient-to-t from-[#060816] via-[#060816]/95 to-transparent relative z-20">
           <ChatInput
             value={input}
             onChange={setInput}
@@ -1225,9 +1181,10 @@ export default function ChatPage() {
             isLiveMode={isLiveMode}
           />
         </div>
+
       </div>
 
-      {/* Settings Panel */}
+      {/* Settings Modal */}
       <div className="relative z-20" data-panel>
         <SettingsPanel
           isOpen={showSettings}
@@ -1241,47 +1198,46 @@ export default function ChatPage() {
         />
       </div>
 
+      {/* Guest Mode Protection Banner Modal */}
       {showGuestLimitPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-[250] p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="relative w-full max-w-md p-6 rounded-2xl border border-cyan-500/30 bg-card/90 shadow-2xl shadow-cyan-500/10 text-center animate-in zoom-in-95 duration-300">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl blur opacity-30 transition duration-1000 -z-10"></div>
-
-            <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto mb-4 text-cyan-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock">
+        <div className="fixed inset-0 flex items-center justify-center z-[250] p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-sm p-6 rounded-3xl border border-white/5 bg-[#0E1324] shadow-2xl text-center animate-scale-in">
+            <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4 text-yellow-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
 
-            <h3 className="text-xl sm:text-2xl font-black tracking-tight text-foreground bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent pr-1">
-              {showGuestLimitPopup.type === "chat" && "Batas Chat Tamu Tercapai!"}
-              {showGuestLimitPopup.type === "image" && "Batas Gambar Tercapai!"}
-              {showGuestLimitPopup.type === "model" && "Model Premium Terkunci!"}
-              {showGuestLimitPopup.type === "mode" && "Mode Premium Terkunci!"}
+            <h3 className="text-base font-bold text-white">
+              {showGuestLimitPopup.type === "chat" && "Guest Limit Reached"}
+              {showGuestLimitPopup.type === "image" && "Image Studio Limit"}
+              {showGuestLimitPopup.type === "model" && "Premium Model Locked"}
+              {showGuestLimitPopup.type === "mode" && "Specialized Mode Locked"}
             </h3>
 
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed font-medium">
-              {showGuestLimitPopup.type === "chat" && "Waduh bos, batas chat Guest Mode (20 pesan) sudah tercapai! Yuk buat akun gratis sekarang untuk menikmati chat tanpa batas dengan Fyy-AI!"}
-              {showGuestLimitPopup.type === "image" && "Batas gambar Guest Mode (10 gambar) sudah tercapai bos! Hubungkan akun gratis untuk menghasilkan gambar tanpa batas dengan Fyy-AI!"}
-              {showGuestLimitPopup.type === "model" && "Model pintar ini hanya tersedia untuk pengguna terdaftar. Yuk buat akun gratis dalam 10 detik untuk membuka seluruh model canggih!"}
-              {showGuestLimitPopup.type === "mode" && "Mode AI pintar ini membutuhkan akun terdaftar. Yuk buat akun gratis dalam 10 detik untuk membuka seluruh mode super cerdas!"}
+            <p className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed font-medium">
+              {showGuestLimitPopup.type === "chat" && "You've exhausted your guest session chat quota. Sign up for a free, unlimited account in seconds to save conversations."}
+              {showGuestLimitPopup.type === "image" && "Image Generation is limited in Guest Mode. Connect your free personal account to start generating endless visuals."}
+              {showGuestLimitPopup.type === "model" && "This advanced model is optimized for authenticated members. Create a free account in 10 seconds to unlock."}
+              {showGuestLimitPopup.type === "mode" && "Specialized reasoning modes require authentication. Create a free account in 10 seconds to unlock."}
             </p>
 
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="mt-5 flex flex-col gap-2">
               <button
                 onClick={() => {
                   document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
                   window.location.href = "/sign-in";
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold text-sm tracking-wide transition-all duration-300 hover:scale-102 shadow-lg shadow-purple-500/20 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-wide transition-all duration-300"
               >
-                Buat Akun Gratis Sekarang!
+                Create Free Account
               </button>
               <button
                 onClick={() => setShowGuestLimitPopup(null)}
-                className="w-full py-2.5 px-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground hover:text-foreground font-semibold text-sm transition-all duration-200 cursor-pointer"
+                className="w-full py-2 px-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-bold text-xs transition-all duration-200"
               >
-                Nanti Saja
+                Dismiss
               </button>
             </div>
           </div>

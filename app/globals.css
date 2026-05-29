@@ -6,94 +6,256 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================
-   FYY-AI BASE SYSTEM
+   FYY-AI DESIGN SYSTEM — Premium AI SaaS Platform
+   Inspired by: OpenAI, Linear, Perplexity, Apple Minimalism
    ========================================================================== */
 
 :root {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.6 0.25 264);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.5 0.28 280);
-  --secondary-foreground: oklch(0.98 0 0);
-  --accent: oklch(0.65 0.28 250);
-  --accent-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.95 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.97 0 0);
-  --ring: oklch(0.6 0.25 264);
-  --radius: 0.75rem;
+  /* FYY-AI Core Palette */
+  --fyf-bg:           #060816;
+  --fyf-surface:      #0E1324;
+  --fyf-card:         #111827;
+  --fyf-border:       rgba(255,255,255,0.06);
+  --fyf-border-hover: rgba(255,255,255,0.12);
+  --fyf-blue:         #2563FF;
+  --fyf-blue-hover:   #1D4ED8;
+  --fyf-text:         #FFFFFF;
+  --fyf-text-secondary: #9CA3AF;
+  --fyf-text-muted:   #6B7280;
+  --fyf-success:      #22C55E;
+  --fyf-danger:       #EF4444;
+
+  /* Shadcn compatibility tokens → mapped to FYY palette */
+  --background:          #060816;
+  --foreground:          #F9FAFB;
+  --card:                #111827;
+  --card-foreground:     #F9FAFB;
+  --primary:             #2563FF;
+  --primary-foreground:  #FFFFFF;
+  --secondary:           #0E1324;
+  --secondary-foreground:#9CA3AF;
+  --accent:              #1EA7FF;
+  --accent-foreground:   #FFFFFF;
+  --muted:               #1C2333;
+  --muted-foreground:    #6B7280;
+  --border:              rgba(255,255,255,0.06);
+  --input:               #0E1324;
+  --ring:                #2563FF;
+  --radius:              1rem;
+
+  /* Theme system variables (used by theme-card etc.) */
+  --theme-blur:        12px;
+  --theme-shadow:      0 4px 24px rgba(0,0,0,0.4);
+  --theme-border-width:1px;
 }
 
-.dark {
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.11 0 0);
-  --card-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.65 0.28 264);
-  --primary-foreground: oklch(0.08 0 0);
-  --secondary: oklch(0.55 0.25 280);
-  --secondary-foreground: oklch(0.08 0 0);
-  --accent: oklch(0.7 0.3 250);
-  --accent-foreground: oklch(0.08 0 0);
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.15 0 0);
-  --ring: oklch(0.65 0.28 264);
+/* Light mode — keep as subtle override, default is dark */
+.light {
+  --background:       #F8FAFC;
+  --foreground:       #0F172A;
+  --card:             #FFFFFF;
+  --card-foreground:  #0F172A;
+  --primary:          #2563FF;
+  --muted:            #F1F5F9;
+  --muted-foreground: #64748B;
+  --border:           rgba(0,0,0,0.08);
+  --input:            #F8FAFC;
 }
 
+/* ============================================================
+   BASE RESET
+   ============================================================ */
 @layer base {
   html, body {
     height: 100%;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    overflow-y: auto; /* Allow page scrolling for Landing Page & Sign-In/Sign-Up pages */
+    overflow-y: auto;
   }
 
   body {
-    @apply bg-background text-foreground transition-all duration-500 ease-in-out antialiased;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.4s ease, color 0.4s ease;
     min-height: 100dvh;
     -webkit-tap-highlight-color: transparent;
-    user-select: none; /* Good for apps, prevents accidental text selection on UI elements */
-    overscroll-behavior-y: none; /* Prevent elastic bounce on iOS */
+    user-select: none;
+    overscroll-behavior-y: none;
   }
 
-  /* Re-enable selection for messages and inputs */
+  /* Re-enable selection where needed */
   .selection-enabled, input, textarea, [contenteditable="true"] {
     user-select: text !important;
   }
+
+  * {
+    box-sizing: border-box;
+  }
 }
 
-/* Safe Area Insets for Mobile Devices (APK/PWA) */
+/* ============================================================
+   FYY-AI IDENTITY
+   ============================================================ */
+.fyf-identity {
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================
+   COMPONENT UTILITIES
+   ============================================================ */
+
+/* Card surface */
+.fyf-card {
+  background-color: var(--fyf-card);
+  border: 1px solid var(--fyf-border);
+  border-radius: 18px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.fyf-card:hover {
+  border-color: var(--fyf-border-hover);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* Surface layer */
+.fyf-surface {
+  background-color: var(--fyf-surface);
+  border: 1px solid var(--fyf-border);
+  border-radius: 14px;
+}
+
+/* Primary button */
+.fyf-btn-primary {
+  background: var(--fyf-blue);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.625rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 12px rgba(37,99,255,0.25);
+}
+.fyf-btn-primary:hover {
+  background: var(--fyf-blue-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(37,99,255,0.35);
+}
+.fyf-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Ghost button */
+.fyf-btn-ghost {
+  background: transparent;
+  color: var(--fyf-text-secondary);
+  border: 1px solid var(--fyf-border);
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.625rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.fyf-btn-ghost:hover {
+  border-color: var(--fyf-border-hover);
+  color: var(--fyf-text);
+  background: rgba(255,255,255,0.04);
+}
+
+/* ============================================================
+   ACCENT GRADIENT
+   ============================================================ */
+.fyf-gradient-text {
+  background: linear-gradient(90deg, #1EA7FF, #6A7DFF, #B84DFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.fyf-gradient-bg {
+  background: linear-gradient(135deg, #1EA7FF 0%, #6A7DFF 50%, #B84DFF 100%);
+}
+
+/* ============================================================
+   CHAT LAYOUT
+   ============================================================ */
 .chat-header {
-  padding-top: calc(env(safe-area-inset-top) + 0.5rem) !important;
-  min-height: calc(env(safe-area-inset-top) + 56px) !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  min-height: calc(env(safe-area-inset-top, 0px) + 56px);
 }
 
-nav.fixed {
-  padding-top: calc(env(safe-area-inset-top) + 1rem) !important;
+.chat-sidebar {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .pt-safe {
-  padding-top: env(safe-area-inset-top) !important;
+  padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
-/* FYY-AI Bold & Italic Identity Styling */
-.fyy-identity {
-  font-family: 'Inter', sans-serif !important;
-  font-weight: 800 !important; /* 800 or 700 is universally loaded */
-  font-style: italic !important; /* Always Italic */
+@media (max-width: 1024px) {
+  .chat-header {
+    padding-top: calc(env(safe-area-inset-top, 24px) + 0.5rem) !important;
+    min-height: calc(env(safe-area-inset-top, 24px) + 64px) !important;
+  }
+  .chat-sidebar {
+    padding-top: env(safe-area-inset-top, 24px) !important;
+  }
 }
 
-/* Base Component Overrides */
+/* ============================================================
+   CHAT BUBBLES
+   ============================================================ */
+.msg-user {
+  background: #1C2333;
+  border-radius: 20px 20px 6px 20px;
+  padding: 0.75rem 1rem;
+  max-width: 80%;
+  align-self: flex-end;
+  color: #F9FAFB;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.msg-ai {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px 20px 20px 20px;
+  padding: 0.875rem 1rem;
+  max-width: 88%;
+  align-self: flex-start;
+  color: #F9FAFB;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ============================================================
+   THEME COMPATIBILITY (legacy card/input classes)
+   ============================================================ */
 .theme-card, [data-theme-card="true"] {
   background-color: var(--card);
-  border: var(--theme-border-width) solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--theme-shadow);
   backdrop-filter: blur(var(--theme-blur));
@@ -103,84 +265,85 @@ nav.fixed {
 
 .theme-input {
   background-color: var(--input);
-  border: var(--theme-border-width) solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   transition: all 0.2s ease;
 }
 
 .chat-input-area {
-  background-color: var(--card) !important;
-  border-top: var(--theme-border-width) solid var(--border) !important;
-  backdrop-filter: blur(var(--theme-blur)) !important;
-  transition: all 0.5s ease;
+  background-color: var(--fyf-bg) !important;
+  border-top: 1px solid var(--border) !important;
+  backdrop-filter: blur(12px) !important;
 }
 
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
-}
-
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
+  --color-background:       var(--background);
+  --color-foreground:       var(--foreground);
+  --color-card:             var(--card);
+  --color-card-foreground:  var(--card-foreground);
+  --color-primary:          var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
+  --color-secondary:        var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-muted: var(--muted);
+  --color-accent:           var(--accent);
+  --color-accent-foreground:var(--accent-foreground);
+  --color-muted:            var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
-  /* FYY-AI HIGH-PERFORMANCE FLUID ANIMATIONS */
-  --animation-slide-in-left: slide-in-up 0.3s ease-out forwards;
-  --animation-slide-in-right: slide-in-up 0.3s ease-out forwards;
-  --animation-bounce-in: bounce-in 0.4s ease-out forwards;
-
-  @keyframes slide-in-up {
-    0% {
-      opacity: 0;
-      transform: translate3d(0, 15px, 0);
-    }
-    100% {
-      opacity: 1;
-      transform: translate3d(0, 0, 0);
-    }
-  }
-
-  @keyframes bounce-in {
-    0% {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  --animation-elegant-fade: elegant-fade 0.5s ease-out forwards;
-  --animation-breathe: breathe 4s ease-in-out infinite;
-  --animation-shimmer: shimmer 3s linear infinite;
-
-  @keyframes elegant-fade {
-    from { opacity: 0; transform: translate3d(0, 20px, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-  }
+  --color-border:           var(--border);
+  --color-input:            var(--input);
+  --color-ring:             var(--ring);
 }
 
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-fade-up    { animation: fadeUp 0.35s ease-out forwards; }
+.animate-fade-in    { animation: fadeIn 0.3s ease-out forwards; }
+.animate-slide-left { animation: slideInLeft 0.3s ease-out forwards; }
+.animate-scale-in   { animation: scaleIn 0.3s ease-out forwards; }
+.animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+
+/* Stagger helpers */
+.delay-100  { animation-delay: 0.1s; animation-fill-mode: both; }
+.delay-200  { animation-delay: 0.2s; animation-fill-mode: both; }
+.delay-300  { animation-delay: 0.3s; animation-fill-mode: both; }
+.delay-400  { animation-delay: 0.4s; animation-fill-mode: both; }
+.delay-500  { animation-delay: 0.5s; animation-fill-mode: both; }
+.delay-600  { animation-delay: 0.6s; animation-fill-mode: both; }
+.delay-700  { animation-delay: 0.7s; animation-fill-mode: both; }
+.delay-800  { animation-delay: 0.8s; animation-fill-mode: both; }
+
+/* Message container perf */
 .message-container {
   will-change: transform, opacity;
   backface-visibility: hidden;
@@ -188,29 +351,6 @@ nav.fixed {
   contain-intrinsic-size: 0 100px;
 }
 
-  @keyframes breathe {
-    0%, 100% { transform: scale(1); opacity: 0.8; }
-    50% { transform: scale(1.05); opacity: 1; }
-  }
-
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-
-/* Dynamic Mobile Safe Area Spacings to prevent collision with Statusbar (Jam, Sinyal, dll) */
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 24px) !important;
+nav.fixed {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem) !important;
 }
-
-@media (max-width: 1024px) {
-  .chat-header {
-    padding-top: calc(env(safe-area-inset-top, 24px) + 0.5rem) !important;
-    min-height: calc(env(safe-area-inset-top, 24px) + 64px) !important;
-  }
-  
-  .chat-sidebar {
-    padding-top: env(safe-area-inset-top, 24px) !important;
-  }
-}
-
