@@ -72,6 +72,51 @@ export default function LandingPage() {
     { name: "FYY-Qwen 3 32B", sub: "Super Reasoning", badge: "", dot: "#059669" },
   ]
 
+  // Footer link groups (will be updated from server-side detection)
+  const [productLinks, setProductLinks] = useState<[string,string][]>([
+    ["Features", "#features"],
+    ["Models", "#models"],
+    ["Developer", "/developer"],
+  ])
+
+  const [resourcesLinks, setResourcesLinks] = useState<[string,string][]>([
+    ["GitHub", "https://github.com/RapXcode1"],
+  ])
+
+  const [legalLinks, setLegalLinks] = useState<[string,string][]>([
+    ["Contact", "mailto:rapxcode1@gmail.com"],
+  ])
+
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/site-links')
+      .then(r => r.json())
+      .then((data) => {
+        if (!mounted) return
+        const prod: [string,string][] = [
+          ["Features", "#features"],
+          ["Models", "#models"],
+          ["Developer", "/developer"],
+        ]
+
+        const res: [string,string][] = []
+        if (data.docs) res.push(["Docs", "/docs"])
+        if (data.api) res.push(["API", "/api"])
+        res.push(["GitHub", "https://github.com/RapXcode1"])
+
+        const legal: [string,string][] = []
+        if (data.privacy) legal.push(["Privacy Policy", "/privacy"])
+        if (data.terms) legal.push(["Terms of Service", "/terms"])
+        legal.push(["Contact", "mailto:rapxcode1@gmail.com"])
+
+        setProductLinks(prod)
+        setResourcesLinks(res)
+        setLegalLinks(legal)
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
+
   return (
     <div className="min-h-screen overflow-x-hidden" style={{ background: "#060816", color: "#F9FAFB" }}>
 
@@ -419,7 +464,7 @@ export default function LandingPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#9CA3AF" }}>Product</p>
               <ul className="space-y-2.5">
-                {[["Features", "#features"], ["Models", "#models"], ["Developer", "/developer"]].map(([l, h]) => (
+                {productLinks.map(([l, h]) => (
                   <li key={l}><a href={h} className="text-xs transition-colors duration-200" style={{ color: "#6B7280" }}
                     onMouseEnter={e => (e.currentTarget.style.color = "#F9FAFB")}
                     onMouseLeave={e => (e.currentTarget.style.color = "#6B7280")}>{l}</a></li>
@@ -430,7 +475,7 @@ export default function LandingPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#9CA3AF" }}>Resources</p>
               <ul className="space-y-2.5">
-                {[["Docs", "#"], ["API", "#"], ["GitHub", "https://github.com/RapXcode1"]].map(([l, h]) => (
+                {resourcesLinks.map(([l, h]) => (
                   <li key={l}><a href={h} className="text-xs transition-colors duration-200" style={{ color: "#6B7280" }}
                     onMouseEnter={e => (e.currentTarget.style.color = "#F9FAFB")}
                     onMouseLeave={e => (e.currentTarget.style.color = "#6B7280")}>{l}</a></li>
@@ -441,7 +486,7 @@ export default function LandingPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#9CA3AF" }}>Legal</p>
               <ul className="space-y-2.5">
-                {[["Privacy Policy", "#"], ["Terms of Service", "#"], ["Contact", "mailto:rapxcode1@gmail.com"]].map(([l, h]) => (
+                {legalLinks.map(([l, h]) => (
                   <li key={l}><a href={h} className="text-xs transition-colors duration-200" style={{ color: "#6B7280" }}
                     onMouseEnter={e => (e.currentTarget.style.color = "#F9FAFB")}
                     onMouseLeave={e => (e.currentTarget.style.color = "#6B7280")}>{l}</a></li>
