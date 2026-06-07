@@ -123,7 +123,7 @@ export default function ChatSidebar({
                         e.stopPropagation()
                         onDeleteConversation(conv.id)
                       }}
-                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-all duration-150"
+                      className="absolute right-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 text-[var(--fyf-text-secondary)] hover:text-red-500 transition-all duration-150"
                     >
                       <Trash2 size={12} />
                     </button>
