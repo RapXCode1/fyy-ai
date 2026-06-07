@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Copy, Edit, RotateCcw, File, Check, Sparkles } from "lucide-react"
+import { Copy, Edit, RotateCcw, File, Check, Sparkles, User, Bot } from "lucide-react"
 import SpeechOutput from "./speech-output"
 import TextFormatter from "./text-formatter"
 import { motion, AnimatePresence } from "framer-motion"
@@ -106,7 +106,7 @@ export default function MessageList({
               {/* Assistant Avatar */}
               {!isUser && (
                 <div className="w-8 h-8 rounded-xl bg-[var(--fyf-surface)] border border-[var(--fyf-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Sparkles size={14} className="text-blue-400" />
+                  <Bot size={14} className="text-blue-400" />
                 </div>
               )}
 
@@ -240,7 +240,7 @@ export default function MessageList({
               {/* User Avatar */}
               {isUser && (
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-white text-[10px] font-black uppercase">YOU</span>
+                  <User size={14} className="text-white" />
                 </div>
               )}
             </motion.div>
