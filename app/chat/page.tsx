@@ -879,11 +879,9 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`fixed inset-0 flex h-[100dvh] w-screen overflow-hidden relative ${selectedFont === 'Inter' ? 'font-sans' : ''}`}
+      className={`fixed inset-0 flex h-[100dvh] w-screen overflow-hidden relative bg-[var(--fyf-bg)] text-[var(--fyf-text)] ${selectedFont === 'Inter' ? 'font-sans' : ''}`}
       style={{
         fontFamily: selectedFont !== 'Inter' ? selectedFont : undefined,
-        background: "#060816",
-        color: "#F9FAFB"
       }}
     >
       <HeroWelcomeAnimation />
@@ -935,12 +933,7 @@ export default function ChatPage() {
         
         {/* Enhanced Header */}
         <div
-          className="chat-header px-4 py-3 flex items-center justify-between relative z-20 border-b transition-all duration-300"
-          style={{
-            background: "rgba(6, 8, 22, 0.8)",
-            backdropFilter: "blur(20px)",
-            borderColor: "rgba(255, 255, 255, 0.05)"
-          }}
+          className="chat-header px-4 py-3 flex items-center justify-between relative z-20 border-b border-[var(--fyf-border)] bg-[var(--fyf-bg)]/80 backdrop-blur-md transition-all duration-300"
         >
           <div className="flex items-center gap-3 relative z-10 flex-shrink-0 min-w-0 flex-1">
             <button
@@ -955,10 +948,10 @@ export default function ChatPage() {
                 <span className="text-white text-xs font-black">F</span>
               </div>
               <div className="flex flex-col min-w-0">
-                <h1 className="text-sm font-bold tracking-tight text-white leading-none">
+                <h1 className="text-sm font-bold tracking-tight text-[var(--fyf-text)] leading-none">
                   FYY-AI
                 </h1>
-                <p className="text-[10px] text-gray-500 mt-0.5 leading-none truncate">
+                <p className="text-[10px] text-[var(--fyf-text-secondary)] mt-0.5 leading-none truncate">
                   {models.find(m => m.id === selectedModel)?.name || "FYY Model"}
                 </p>
               </div>
@@ -1018,15 +1011,15 @@ export default function ChatPage() {
                 </button>
                 
                 {showExportMenu && (
-                  <div className="absolute right-0 mt-2 w-44 bg-[#0E1324] border border-white/5 shadow-2xl rounded-2xl overflow-hidden z-[100] p-1.5 space-y-1">
-                    <button onClick={handleExportAsJSON} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors">
+                  <div className="absolute right-0 mt-2 w-44 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] shadow-2xl rounded-2xl overflow-hidden z-[100] p-1.5 space-y-1">
+                    <button onClick={handleExportAsJSON} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-[var(--fyf-border)] rounded-xl text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] transition-colors">
                       <FileJson size={12} className="text-gray-400" /> Export JSON
                     </button>
-                    <button onClick={handleExportAsMarkdown} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors">
-                      <FileCode2 size={12} className="text-gray-400" /> Export Markdown
+                    <button onClick={handleExportAsMarkdown} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-[var(--fyf-border)] rounded-xl text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] transition-colors">
+                      <FileCode2 size={12} className="text-[var(--fyf-text-secondary)]" /> Export Markdown
                     </button>
-                    <button onClick={handleExportAsText} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors">
-                      <FileText size={12} className="text-gray-400" /> Export Text
+                    <button onClick={handleExportAsText} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-[var(--fyf-border)] rounded-xl text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] transition-colors">
+                      <FileText size={12} className="text-[var(--fyf-text-secondary)]" /> Export Text
                     </button>
                   </div>
                 )}
@@ -1047,15 +1040,15 @@ export default function ChatPage() {
         </div>
 
         {showSyncBanner && (
-          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl border border-blue-500/20 bg-[#0E1324]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-fade-up z-30">
+          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl border border-blue-500/20 bg-[var(--fyf-surface)]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-fade-up z-30">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5" />
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-2.5">
               <span className="text-lg">📲</span>
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-white">
+                <span className="text-xs font-bold text-[var(--fyf-text)]">
                   Active Web Login Detected!
                 </span>
-                <span className="text-[10px] text-gray-400 mt-0.5">
+                <span className="text-[10px] text-[var(--fyf-text-secondary)] mt-0.5">
                   Synchronize this session directly with the FYY-AI Android App to skip logging in again.
                 </span>
               </div>
@@ -1119,7 +1112,7 @@ export default function ChatPage() {
 
         {showQuickPrompts && (
           <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
-            <div className="w-full max-w-md bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
+            <div className="w-full max-w-md bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <QuickPrompts
                 onSelect={(prompt) => { setInput(prompt); setShowQuickPrompts(false); }}
                 onClose={() => setShowQuickPrompts(false)}
@@ -1130,9 +1123,9 @@ export default function ChatPage() {
 
         {showModesSelector && (
           <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
-            <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
+            <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
                   <Layers size={14} className="text-blue-400" /> Choose AI Mode
                 </h2>
                 <button
@@ -1149,9 +1142,9 @@ export default function ChatPage() {
 
         {showModelSelector && (
           <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
-            <div className="w-full max-w-md bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
+            <div className="w-full max-w-md bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
                   <Brain size={14} className="text-blue-400" /> Choose Intelligence Model
                 </h2>
                 <button
@@ -1179,9 +1172,9 @@ export default function ChatPage() {
 
         {showImageGenerator && (
           <div className="fixed inset-0 flex items-center justify-center z-[110] p-4 sm:p-6 animate-scale-in" data-panel>
-            <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#0E1324] border border-white/5 rounded-3xl p-6 shadow-2xl">
+            <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
                   <Sparkles size={14} className="text-blue-400" /> AI Image Studio
                 </h2>
                 <button
@@ -1211,8 +1204,8 @@ export default function ChatPage() {
               </div>
               
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-white">Experience Premium Intelligence</h2>
-                <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+                <h2 className="text-xl font-bold text-[var(--fyf-text)]">Experience Premium Intelligence</h2>
+                <p className="text-xs sm:text-sm text-[var(--fyf-text-secondary)] leading-relaxed">
                   Start writing, thinking, generating high quality code, or analyzing files instantly with FYY-AI.
                 </p>
               </div>
@@ -1245,7 +1238,7 @@ export default function ChatPage() {
         </div>
 
         {/* Input Area */}
-        <div className="py-3 bg-gradient-to-t from-[#060816] via-[#060816]/95 to-transparent relative z-20">
+        <div className="py-3 bg-gradient-to-t from-[var(--fyf-bg)] via-[var(--fyf-bg)]/95 to-transparent relative z-20">
           <ChatInput
             value={input}
             onChange={setInput}
@@ -1282,7 +1275,7 @@ export default function ChatPage() {
       {/* Guest Mode Protection Banner Modal */}
       {showGuestLimitPopup && (
         <div className="fixed inset-0 flex items-center justify-center z-[250] p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-sm p-6 rounded-3xl border border-white/5 bg-[#0E1324] shadow-2xl text-center animate-scale-in">
+          <div className="relative w-full max-w-sm p-6 rounded-3xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] shadow-2xl text-center animate-scale-in">
             <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4 text-yellow-500">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
@@ -1290,14 +1283,14 @@ export default function ChatPage() {
               </svg>
             </div>
 
-            <h3 className="text-base font-bold text-white">
+            <h3 className="text-base font-bold text-[var(--fyf-text)]">
               {showGuestLimitPopup.type === "chat" && "Guest Limit Reached"}
               {showGuestLimitPopup.type === "image" && "Image Studio Limit"}
               {showGuestLimitPopup.type === "model" && "Premium Model Locked"}
               {showGuestLimitPopup.type === "mode" && "Specialized Mode Locked"}
             </h3>
 
-            <p className="mt-2 text-xs sm:text-sm text-gray-400 leading-relaxed font-medium">
+            <p className="mt-2 text-xs sm:text-sm text-[var(--fyf-text-secondary)] leading-relaxed font-medium">
               {showGuestLimitPopup.type === "chat" && "You've exhausted your guest session chat quota. Sign up for a free, unlimited account in seconds to save conversations."}
               {showGuestLimitPopup.type === "image" && "Image Generation is limited in Guest Mode. Connect your free personal account to start generating endless visuals."}
               {showGuestLimitPopup.type === "model" && "This advanced model is optimized for authenticated members. Create a free account in 10 seconds to unlock."}
