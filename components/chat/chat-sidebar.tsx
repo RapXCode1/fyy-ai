@@ -133,16 +133,6 @@ export default function ChatSidebar({
             )}
           </div>
 
-          {/* Pro Banner Upgrade info (Linear style) */}
-          <div className="mx-3 mb-2 p-3.5 rounded-2xl border border-[var(--fyf-border)] bg-[var(--fyf-bg)] flex flex-col gap-2">
-            <div className="flex items-center gap-1.5">
-              <Sparkles size={12} className="text-yellow-400" />
-              <span className="text-[10px] font-black text-[var(--fyf-text)] uppercase tracking-wider">FYY Pro Tier</span>
-            </div>
-            <p className="text-[10px] text-gray-400 leading-normal">
-              Get priority processing, unlimited image generation, and native voice features.
-            </p>
-          </div>
 
           {/* User Account / Footer */}
           <div className="p-4 border-t border-[var(--fyf-border)] bg-[var(--fyf-bg)] flex flex-col gap-3">
