@@ -95,17 +95,17 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
 
       {/* Modal Container */}
       <div className="fixed inset-0 flex items-center justify-center z-[120] p-4 sm:p-6 animate-scale-in">
-        <div className="w-full max-w-xl max-h-[90vh] flex flex-col fyf-card bg-[#0E1324] border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="w-full max-w-xl max-h-[90vh] flex flex-col fyf-card rounded-3xl overflow-hidden shadow-2xl">
           
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/5 p-4 sm:p-5 flex-shrink-0">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-[var(--fyf-border)] p-4 sm:p-5 flex-shrink-0">
+            <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
               <Settings className="w-4 h-4 text-blue-400" />
               Settings Panel
             </h2>
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-colors"
+              className="p-1.5 hover:bg-[var(--fyf-border-hover)] text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] rounded-lg transition-colors"
             >
               <X size={16} />
             </button>
@@ -116,21 +116,21 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
             
             {/* Section 1: System prompt */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
                 <Sliders size={12} className="text-blue-400" />
                 System Prompt
               </label>
               <textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                className="w-full h-24 px-3 py-2 bg-black/30 border border-white/5 rounded-xl text-xs sm:text-sm text-white placeholder-gray-600 outline-none focus:border-blue-500/50 resize-none"
+                className="w-full h-24 px-3 py-2 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-xl text-xs sm:text-sm text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] outline-none focus:border-blue-500/50 resize-none transition-colors"
                 placeholder="Instruct FYY-AI on how to act..."
               />
             </div>
 
             {/* Section 2: Model parameters */}
-            <div className="space-y-4 bg-white/[0.01] border border-white/5 rounded-2xl p-4">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <div className="space-y-4 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl p-4">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider">
                 <Sliders size={12} className="text-blue-400" />
                 Model Tuning
               </div>
@@ -138,7 +138,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
               {/* Temperature */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Temperature</span>
+                  <span className="text-[var(--fyf-text-secondary)]">Temperature</span>
                   <span className="text-blue-400 font-bold">{temperature.toFixed(2)}</span>
                 </div>
                 <input
@@ -148,14 +148,14 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                   step="0.1"
                   value={temperature}
                   onChange={(e) => setTemperature(Number.parseFloat(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  className="w-full h-1 bg-[var(--fyf-border)] rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
               </div>
 
               {/* Max Tokens */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Response Length (Max Tokens)</span>
+                  <span className="text-[var(--fyf-text-secondary)]">Response Length (Max Tokens)</span>
                   <span className="text-blue-400 font-bold">{maxTokens}</span>
                 </div>
                 <input
@@ -165,14 +165,14 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                   step="100"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(Number.parseInt(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  className="w-full h-1 bg-[var(--fyf-border)] rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
               </div>
             </div>
 
             {/* Section 3: Font Picker */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
                 <Type size={12} className="text-blue-400" />
                 Font Family
               </label>
@@ -205,12 +205,12 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                     }}
                     className="p-2.5 rounded-xl border text-left transition-all duration-200"
                     style={{
-                      background: fontFamily === font.id ? "rgba(37, 99, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
-                      borderColor: fontFamily === font.id ? "rgba(37, 99, 255, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                      background: fontFamily === font.id ? "rgba(37, 99, 255, 0.08)" : "transparent",
+                      borderColor: fontFamily === font.id ? "rgba(37, 99, 255, 0.3)" : "var(--fyf-border)",
                     }}
                   >
-                    <div className="text-xs font-bold text-white">{font.name}</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{font.desc}</div>
+                    <div className="text-xs font-bold text-[var(--fyf-text)]">{font.name}</div>
+                    <div className="text-[10px] text-[var(--fyf-text-secondary)] mt-0.5">{font.desc}</div>
                   </button>
                 ))}
               </div>
@@ -218,7 +218,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
 
             {/* Section 4: Design Style Theme selector */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
                 <Palette size={12} className="text-blue-400" />
                 Design Theme Style
               </label>
@@ -234,12 +234,12 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                     onClick={() => setThemeStyle(style.id)}
                     className="p-2.5 rounded-xl border text-left transition-all duration-200"
                     style={{
-                      background: themeStyle === style.id ? "rgba(37, 99, 255, 0.08)" : "rgba(255, 255, 255, 0.02)",
-                      borderColor: themeStyle === style.id ? "rgba(37, 99, 255, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                      background: themeStyle === style.id ? "rgba(37, 99, 255, 0.08)" : "transparent",
+                      borderColor: themeStyle === style.id ? "rgba(37, 99, 255, 0.3)" : "var(--fyf-border)",
                     }}
                   >
-                    <div className="text-xs font-bold text-white">{style.name}</div>
-                    <div className="text-[9px] text-gray-500 mt-0.5 leading-snug">{style.desc}</div>
+                    <div className="text-xs font-bold text-[var(--fyf-text)]">{style.name}</div>
+                    <div className="text-[9px] text-[var(--fyf-text-secondary)] mt-0.5 leading-snug">{style.desc}</div>
                   </button>
                 ))}
               </div>
@@ -256,11 +256,11 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
           </div>
 
           {/* Footer buttons */}
-          <div className="border-t border-white/5 p-4 flex gap-2 flex-shrink-0 bg-black/10">
+          <div className="border-t border-[var(--fyf-border)] p-4 flex gap-2 flex-shrink-0 bg-[var(--fyf-surface)]">
             <Button
               onClick={handleReset}
               variant="ghost"
-              className="flex-1 text-xs border border-white/5 hover:bg-white/5 text-gray-400 font-bold rounded-xl h-10"
+              className="flex-1 text-xs border border-[var(--fyf-border)] hover:bg-[var(--fyf-border-hover)] text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] font-bold rounded-xl h-10 transition-colors"
             >
               <RotateCcw size={12} className="mr-1.5" />
               Reset Defaults

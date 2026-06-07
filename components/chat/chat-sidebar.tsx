@@ -52,16 +52,16 @@ export default function ChatSidebar({
           borderRight: "1px solid rgba(255, 255, 255, 0.06)",
         }}
       >
-        <div className="w-[280px] flex flex-col h-full">
+        <div className="w-[280px] flex flex-col h-full bg-[var(--fyf-surface)]">
           
           {/* Header & New Chat button */}
-          <div className="p-4 flex flex-col gap-4 border-b border-[rgba(255,255,255,0.06)]">
+          <div className="p-4 flex flex-col gap-4 border-b border-[var(--fyf-border)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg fyf-gradient-bg flex items-center justify-center">
-                  <span className="text-white text-xs font-black">F</span>
+                  <span className="text-[var(--fyf-text)] text-xs font-black">F</span>
                 </div>
-                <span className="text-sm font-bold tracking-tight text-white">FYY-AI Workspace</span>
+                <span className="text-sm font-bold tracking-tight text-[var(--fyf-text)]">FYY-AI Workspace</span>
               </div>
             </div>
 
@@ -134,10 +134,10 @@ export default function ChatSidebar({
           </div>
 
           {/* Pro Banner Upgrade info (Linear style) */}
-          <div className="mx-3 mb-2 p-3.5 rounded-2xl border border-white/5 bg-white/[0.02] flex flex-col gap-2">
+          <div className="mx-3 mb-2 p-3.5 rounded-2xl border border-[var(--fyf-border)] bg-[var(--fyf-bg)] flex flex-col gap-2">
             <div className="flex items-center gap-1.5">
               <Sparkles size={12} className="text-yellow-400" />
-              <span className="text-[10px] font-black text-white uppercase tracking-wider">FYY Pro Tier</span>
+              <span className="text-[10px] font-black text-[var(--fyf-text)] uppercase tracking-wider">FYY Pro Tier</span>
             </div>
             <p className="text-[10px] text-gray-400 leading-normal">
               Get priority processing, unlimited image generation, and native voice features.
@@ -145,9 +145,9 @@ export default function ChatSidebar({
           </div>
 
           {/* User Account / Footer */}
-          <div className="p-4 border-t border-[rgba(255,255,255,0.06)] bg-black/10 flex flex-col gap-3">
+          <div className="p-4 border-t border-[var(--fyf-border)] bg-[var(--fyf-bg)] flex flex-col gap-3">
             {isGuest ? (
-              <div className="flex items-center gap-3 p-2 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center gap-3 p-2 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] hover:bg-[var(--fyf-border)] transition-colors">
                 <div className="w-8 h-8 rounded-full border border-yellow-500/30 overflow-hidden bg-yellow-500/10 flex items-center justify-center text-yellow-500 font-bold text-xs">
                   G
                 </div>
@@ -173,8 +173,8 @@ export default function ChatSidebar({
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3 p-2 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-colors">
-                <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden bg-[#111827] flex-shrink-0">
+              <div className="flex items-center gap-3 p-2 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] hover:bg-[var(--fyf-border)] transition-colors">
+                <div className="w-8 h-8 rounded-full border border-[var(--fyf-border)] overflow-hidden bg-[var(--fyf-card)] flex-shrink-0">
                   {user?.imageUrl ? (
                     <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
@@ -185,15 +185,15 @@ export default function ChatSidebar({
                 </div>
                 
                 <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-semibold truncate text-white">
+                  <span className="text-xs font-semibold truncate text-[var(--fyf-text)]">
                     {user?.fullName || 'User'}
                   </span>
-                  <span className="text-[9px] text-gray-500 truncate">
+                  <span className="text-[9px] text-[var(--fyf-text-secondary)] truncate">
                     {user?.primaryEmailAddress?.emailAddress || 'Free Tier'}
                   </span>
                 </div>
 
-                <div className="relative w-7 h-7 flex items-center justify-center bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border border-white/5">
+                <div className="relative w-7 h-7 flex items-center justify-center bg-[var(--fyf-border)] rounded-lg hover:bg-[var(--fyf-border-hover)] transition-colors cursor-pointer border border-[var(--fyf-border)]">
                   <Settings size={12} className="text-gray-400" />
                   <div className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer">
                     <UserButton appearance={{ elements: { avatarBox: "w-7 h-7 rounded-none" } }} />

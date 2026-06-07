@@ -51,6 +51,17 @@
 
 /* Light mode — keep as subtle override, default is dark */
 .light {
+  /* FYY-AI Core Palette overrides for Light Mode */
+  --fyf-bg:           #F8FAFC;
+  --fyf-surface:      #F1F5F9;
+  --fyf-card:         #FFFFFF;
+  --fyf-border:       rgba(0,0,0,0.08);
+  --fyf-border-hover: rgba(0,0,0,0.15);
+  --fyf-text:         #0F172A;
+  --fyf-text-secondary: #64748B;
+  --fyf-text-muted:   #94A3B8;
+
+  /* Shadcn compatibility tokens */
   --background:       #F8FAFC;
   --foreground:       #0F172A;
   --card:             #FFFFFF;
@@ -327,11 +338,47 @@
   50% { transform: scaleY(1); }
 }
 
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes input-glow {
+  0% { box-shadow: 0 0 0 0 rgba(37,99,255,0); border-color: var(--fyf-border); }
+  50% { box-shadow: 0 0 16px rgba(37,99,255,0.15); border-color: rgba(37,99,255,0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(37,99,255,0); border-color: var(--fyf-border); }
+}
+
+.fyf-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+.fyf-focus-ring:focus-within {
+  border-color: rgba(37,99,255,0.4);
+  box-shadow: 0 0 0 1px rgba(37,99,255,0.2), 0 4px 24px rgba(0,0,0,0.4);
+  transition: all 0.3s ease;
+}
+
+.micro-btn {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease;
+}
+.micro-btn:active {
+  transform: scale(0.95);
+}
+
 .animate-fade-up    { animation: fadeUp 0.35s ease-out forwards; }
 .animate-fade-in    { animation: fadeIn 0.3s ease-out forwards; }
 .animate-slide-left { animation: slideInLeft 0.3s ease-out forwards; }
 .animate-scale-in   { animation: scaleIn 0.3s ease-out forwards; }
 .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+.animate-ripple     { animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
 
 /* Stagger helpers */
 .delay-100  { animation-delay: 0.1s; animation-fill-mode: both; }

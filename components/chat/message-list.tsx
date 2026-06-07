@@ -105,7 +105,7 @@ export default function MessageList({
             >
               {/* Assistant Avatar */}
               {!isUser && (
-                <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-[var(--fyf-surface)] border border-[var(--fyf-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Sparkles size={14} className="text-blue-400" />
                 </div>
               )}
@@ -115,18 +115,18 @@ export default function MessageList({
                 
                 {/* Editing State */}
                 {editingMessage === message.id ? (
-                  <div className="bg-[#0E1324] border border-white/10 rounded-2xl p-3 space-y-2">
+                  <div className="bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl p-3 space-y-2">
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full text-xs sm:text-sm bg-black/40 border border-white/5 rounded-xl p-2.5 resize-none text-white outline-none focus:border-blue-500"
+                      className="w-full text-xs sm:text-sm bg-[var(--fyf-card)] border border-[var(--fyf-border)] rounded-xl p-2.5 resize-none text-[var(--fyf-text)] outline-none focus:border-blue-500"
                       rows={3}
                       autoFocus
                     />
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={handleCancelEdit}
-                        className="px-2.5 py-1 text-[10px] sm:text-xs bg-white/5 text-gray-400 hover:text-white rounded-lg transition-colors"
+                        className="px-2.5 py-1 text-[10px] sm:text-xs bg-[var(--fyf-border)] text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -144,8 +144,8 @@ export default function MessageList({
                     onClick={() => setSelectedMessage(selectedMessage === message.id ? null : message.id)}
                     className={`px-4 py-3 text-sm leading-relaxed border transition-all duration-200 select-text ${
                       isUser
-                        ? "bg-[#1C2333] border-white/[0.04] text-white rounded-2xl rounded-tr-sm"
-                        : "bg-white/[0.025] border-white/[0.06] text-gray-100 rounded-2xl rounded-tl-sm hover:bg-white/[0.04]"
+                        ? "bg-[var(--fyf-blue)] border-transparent text-white rounded-2xl rounded-tr-sm"
+                        : "bg-[var(--fyf-surface)] border-[var(--fyf-border)] text-[var(--fyf-text)] rounded-2xl rounded-tl-sm hover:border-[var(--fyf-border-hover)]"
                     }`}
                   >
                     
@@ -153,7 +153,7 @@ export default function MessageList({
                     {message.attachments && message.attachments.length > 0 && (
                       <div className="space-y-2 mb-2 max-w-full">
                         {message.attachments.map((attachment, index) => (
-                          <div key={index} className="rounded-xl overflow-hidden border border-white/5 bg-black/20">
+                          <div key={index} className="rounded-xl overflow-hidden border border-[var(--fyf-border)] bg-[var(--fyf-card)]">
                             {attachment.type.startsWith("image/") && attachment.url ? (
                               <img
                                 src={attachment.url}
@@ -167,8 +167,8 @@ export default function MessageList({
                                   <File size={15} className="text-blue-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-white truncate">{attachment.name}</p>
-                                  <p className="text-[10px] text-gray-500">{(attachment.size / 1024 / 1024).toFixed(2)} MB</p>
+                                  <p className="text-xs font-semibold text-[var(--fyf-text)] truncate">{attachment.name}</p>
+                                  <p className="text-[10px] text-[var(--fyf-text-secondary)]">{(attachment.size / 1024 / 1024).toFixed(2)} MB</p>
                                 </div>
                               </div>
                             )}
@@ -194,7 +194,7 @@ export default function MessageList({
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                       onClick={() => handleCopy(message.id, message.content)}
-                      className="hover:text-white flex items-center gap-0.5"
+                      className="hover:text-[var(--fyf-text)] flex items-center gap-0.5"
                     >
                       {copiedId === message.id ? (
                         <>
@@ -212,7 +212,7 @@ export default function MessageList({
                     {isUser ? (
                       <button
                         onClick={() => handleEdit(message.id, message.content)}
-                        className="hover:text-white flex items-center gap-0.5"
+                        className="hover:text-[var(--fyf-text)] flex items-center gap-0.5"
                       >
                         <Edit size={10} />
                         <span>Edit</span>
@@ -220,7 +220,7 @@ export default function MessageList({
                     ) : (
                       <button
                         onClick={() => handleRegenerate(message.id)}
-                        className="hover:text-white flex items-center gap-0.5"
+                        className="hover:text-[var(--fyf-text)] flex items-center gap-0.5"
                       >
                         <RotateCcw size={10} />
                         <span>Regenerate</span>
@@ -228,7 +228,7 @@ export default function MessageList({
                     )}
 
                     {!isUser && (
-                      <div className="hover:text-white">
+                      <div className="hover:text-[var(--fyf-text)]">
                         <SpeechOutput text={message.content} />
                       </div>
                     )}
@@ -248,29 +248,21 @@ export default function MessageList({
         })}
       </AnimatePresence>
 
-      {/* Typing Indicator */}
+      {/* Typing Indicator / Shimmer */}
       {isLoading && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex gap-3.5"
         >
-          <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-[var(--fyf-surface)] border border-[var(--fyf-border)] flex items-center justify-center flex-shrink-0">
             <Sparkles size={14} className="text-blue-400 animate-pulse" />
           </div>
           
-          <div className="px-4 py-3 bg-white/[0.025] border border-white/[0.06] rounded-2xl rounded-tl-sm flex items-center gap-2">
-            <div className="flex gap-1">
-              {[0, 0.15, 0.3].map((delay, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ y: [0, -4, 0] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay }}
-                  className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-indigo-400"
-                />
-              ))}
-            </div>
-            <span className="text-[11px] text-gray-500 font-medium">Thinking...</span>
+          <div className="px-4 py-3 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl rounded-tl-sm flex flex-col gap-2 min-w-[120px] max-w-[60%] w-full overflow-hidden relative">
+            <div className="absolute inset-0 fyf-shimmer opacity-50"></div>
+            <div className="h-3 w-3/4 bg-[var(--fyf-border)] rounded-full"></div>
+            <div className="h-3 w-1/2 bg-[var(--fyf-border)] rounded-full"></div>
           </div>
         </motion.div>
       )}

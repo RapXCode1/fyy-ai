@@ -93,12 +93,12 @@ export default function LiveVoiceModal({
         {state !== 'idle' && (
           <>
             <div
-              className={`absolute w-36 h-36 sm:w-48 sm:h-48 rounded-full border-4 ${getRippleColor()} animate-ping-slow`}
-              style={{ animationDuration: state === 'speaking' ? '1.2s' : '3s' }}
+              className={`absolute w-36 h-36 sm:w-48 sm:h-48 rounded-full border-2 sm:border-4 ${getRippleColor()} animate-ripple`}
+              style={{ animationDuration: state === 'speaking' ? '1.5s' : '2.5s' }}
             />
             <div
-              className={`absolute w-44 h-44 sm:w-60 sm:h-60 rounded-full border-2 ${getRippleColor()} animate-ping-slow`}
-              style={{ animationDuration: state === 'speaking' ? '1.8s' : '4s', animationDelay: '0.3s' }}
+              className={`absolute w-44 h-44 sm:w-60 sm:h-60 rounded-full border sm:border-2 ${getRippleColor()} animate-ripple`}
+              style={{ animationDuration: state === 'speaking' ? '2s' : '3.5s', animationDelay: '0.4s' }}
             />
           </>
         )}
@@ -107,10 +107,13 @@ export default function LiveVoiceModal({
         <button
           onClick={() => state === 'speaking' && onInterrupt?.()}
           style={getOrbStateStyles()}
-          className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-full transition-all duration-500 ease-out flex items-center justify-center cursor-pointer select-none"
+          className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-full transition-all duration-500 ease-out flex items-center justify-center cursor-pointer select-none overflow-hidden group"
           title={state === 'speaking' ? "Tap to interrupt speaking" : ""}
         >
-          <div className="w-1/2 h-1/2 rounded-full bg-white/10 blur-md pointer-events-none" />
+          {/* Inner core glow that pulses */}
+          <div className={`w-3/4 h-3/4 rounded-full bg-white/20 blur-md pointer-events-none transition-all duration-300 ${state === 'speaking' ? 'animate-pulse' : ''}`} />
+          {/* Glass reflection */}
+          <div className="absolute top-2 left-4 w-8 h-4 bg-white/30 rounded-full rotate-[-45deg] blur-[2px] opacity-60 pointer-events-none"></div>
         </button>
 
       </div>

@@ -54,10 +54,10 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
   }
 
   return (
-    <div className="p-4 bg-[#0E1324] rounded-2xl border border-white/5 space-y-4">
+    <div className="p-4 bg-[var(--fyf-surface)] rounded-2xl border border-[var(--fyf-border)] space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <label className="text-xs font-bold text-white uppercase tracking-wider">Attachment Hub</label>
+          <label className="text-xs font-bold text-[var(--fyf-text)] uppercase tracking-wider">Attachment Hub</label>
           <p className="text-[10px] text-gray-500 mt-0.5">Images, PDFs, JSON or TXT documents (Max 50MB)</p>
         </div>
         
@@ -65,10 +65,10 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
           onClick={triggerFileInput}
           disabled={isLoading}
           variant="ghost"
-          className="h-8 px-3 text-xs bg-white/5 hover:bg-white/10 text-white rounded-xl flex items-center gap-1.5"
+          className="h-8 px-3 text-xs bg-[var(--fyf-border)] hover:bg-[var(--fyf-border-hover)] text-[var(--fyf-text)] rounded-xl flex items-center gap-1.5 transition-colors"
         >
           {isLoading ? (
-            <div className="animate-spin rounded-full h-3 w-3 border border-white border-t-transparent" />
+            <div className="animate-spin rounded-full h-3 w-3 border border-[var(--fyf-text)] border-t-transparent" />
           ) : (
             <>
               <Paperclip size={12} />
@@ -104,7 +104,7 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
 
       {/* Uploaded items container */}
       {uploadedFiles.length > 0 && (
-        <div className="space-y-2 border-t border-white/5 pt-3">
+        <div className="space-y-2 border-t border-[var(--fyf-border)] pt-3">
           <div className="flex items-center justify-between">
             <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
               Uploaded Items ({uploadedFiles.length})
@@ -121,13 +121,13 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
             {uploadedFiles.map(({ file, preview, id }) => (
               <div
                 key={id}
-                className="flex items-center gap-3 p-2.5 bg-black/40 rounded-xl border border-white/5 hover:border-white/10 transition-all"
+                className="flex items-center gap-3 p-2.5 bg-[var(--fyf-card)] rounded-xl border border-[var(--fyf-border)] hover:border-[var(--fyf-border-hover)] transition-all"
               >
                 {preview && file.type.startsWith("image/") ? (
                   <img
                     src={preview}
                     alt={file.name}
-                    className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-white/10"
+                    className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-[var(--fyf-border)]"
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -136,21 +136,21 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-white truncate">{file.name}</p>
-                  <p className="text-[9px] text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  <p className="text-xs font-semibold text-[var(--fyf-text)] truncate">{file.name}</p>
+                  <p className="text-[9px] text-[var(--fyf-text-secondary)]">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
 
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleDownloadFile(file)}
-                    className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-blue-400 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-[var(--fyf-border)] text-gray-400 hover:text-blue-400 rounded-lg transition-colors"
                     title="Download item"
                   >
                     <Download size={12} />
                   </button>
                   <button
                     onClick={() => handleRemoveFile(id)}
-                    className="p-1.5 hover:bg-white/5 text-gray-400 hover:text-red-400 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-[var(--fyf-border)] text-gray-400 hover:text-red-400 rounded-lg transition-colors"
                     title="Delete item"
                   >
                     <X size={12} />

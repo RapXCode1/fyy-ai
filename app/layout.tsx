@@ -46,21 +46,9 @@ export default function RootLayout({
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600;1,700;1,800&family=Lato:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;500;600;700&family=Nunito:wght@400;600;700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@400;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet" />
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                  (function() {
-                    try {
-                      var theme = localStorage.getItem('theme') || 'dark';
-                      if (theme === 'dark') document.documentElement.classList.add('dark');
-                    } catch (e) {}
-                  })()
-                `,
-            }}
-          />
         </head>
         <body className="font-sans antialiased">
-          <ThemeProvider>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <ThemeStyleProvider />
             <ClientOnlyProviders />
             {children}

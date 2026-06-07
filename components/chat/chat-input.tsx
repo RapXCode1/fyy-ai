@@ -188,7 +188,7 @@ export default function ChatInput({
 
       {/* Uploaded Files Preview */}
       {uploadedFiles.length > 0 && (
-        <div className="p-3 bg-white/[0.02] rounded-2xl border border-white/5 space-y-2">
+        <div className="p-3 bg-[var(--fyf-surface)] rounded-2xl border border-[var(--fyf-border)] space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
               <span>Attached Files ({uploadedFiles.length})</span>
@@ -209,7 +209,7 @@ export default function ChatInput({
           
           <div className="flex flex-wrap gap-2">
             {uploadedFiles.map((uf, index) => (
-              <div key={uf.id} className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-xl border border-white/5 text-xs text-gray-200">
+              <div key={uf.id} className="flex items-center gap-2 px-3 py-1.5 bg-[var(--fyf-card)] rounded-xl border border-[var(--fyf-border)] text-xs text-[var(--fyf-text)]">
                 <span className="truncate max-w-[120px] font-medium">{uf.file.name}</span>
                 <span className="text-[10px] text-gray-500">({(uf.file.size / 1024 / 1024).toFixed(1)}MB)</span>
                 <button
@@ -226,7 +226,7 @@ export default function ChatInput({
 
       {/* Main pill bar */}
       <div className="flex gap-2 items-end">
-        <div className="flex-1 flex items-end px-3 py-2 bg-[#0E1324] border border-white/5 rounded-2xl focus-within:border-blue-500/50 transition-all duration-300">
+        <div className="flex-1 flex items-end px-3 py-2 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl transition-all duration-300 fyf-focus-ring">
           
           {/* Inner Buttons */}
           <div className="flex items-center gap-1 mr-2 flex-shrink-0 mb-0.5">
@@ -234,7 +234,7 @@ export default function ChatInput({
               variant="ghost"
               onClick={() => setShowFileUpload(!showFileUpload)}
               title="Upload files"
-              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors flex items-center justify-center"
+              className="h-8 w-8 p-0 text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-[var(--fyf-border)] rounded-lg transition-colors flex items-center justify-center micro-btn"
             >
               <Paperclip className="h-4 w-4" />
             </Button>
@@ -243,7 +243,7 @@ export default function ChatInput({
               variant="ghost"
               onClick={onShowQuickPrompts}
               title="Quick suggestions"
-              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg hidden sm:flex transition-colors items-center justify-center"
+              className="h-8 w-8 p-0 text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-[var(--fyf-border)] rounded-lg hidden sm:flex transition-colors items-center justify-center micro-btn"
             >
               <Zap className="h-4 w-4 text-amber-500" />
             </Button>
@@ -255,7 +255,7 @@ export default function ChatInput({
             onChange={(e) => onChange(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask FYY-AI anything..."
-            className="flex-1 bg-transparent outline-none resize-none text-sm text-white placeholder-gray-500 leading-relaxed min-h-[24px] py-1 selection-enabled"
+            className="flex-1 bg-transparent outline-none resize-none text-sm text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] leading-relaxed min-h-[24px] py-1 selection-enabled"
             rows={1}
             disabled={isLoading}
             maxLength={2000}
@@ -277,7 +277,7 @@ export default function ChatInput({
         <Button
           onClick={handleSend}
           disabled={(!value.trim() && uploadedFiles.length === 0) || isLoading || isAnalyzing}
-          className="fyf-btn-primary h-[40px] w-[40px] rounded-xl flex-shrink-0 flex items-center justify-center"
+          className="fyf-btn-primary h-[40px] w-[40px] rounded-xl flex-shrink-0 flex items-center justify-center micro-btn"
         >
           {isAnalyzing ? (
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
