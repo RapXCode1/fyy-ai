@@ -20,8 +20,8 @@ export default function LiveVoiceModal({
     switch (state) {
       case 'listening':
         return {
-          background: "linear-gradient(135deg, #2563FF, #1D4ED8)",
-          boxShadow: "0 0 40px rgba(37, 99, 255, 0.4)",
+          background: "linear-gradient(135deg, #FFFFFF, #E5E7EB)",
+          boxShadow: "0 0 40px rgba(255, 255, 255, 0.4)",
           transform: "scale(1.0)"
         }
       case 'thinking':
@@ -38,8 +38,8 @@ export default function LiveVoiceModal({
         }
       default:
         return {
-          background: "rgba(255, 255, 255, 0.05)",
-          boxShadow: "0 0 20px rgba(255, 255, 255, 0.02)",
+          background: "linear-gradient(135deg, #2563FF, #1D4ED8)",
+          boxShadow: "0 0 40px rgba(37, 99, 255, 0.4)",
           transform: "scale(0.9)"
         }
     }
@@ -47,10 +47,10 @@ export default function LiveVoiceModal({
 
   const getRippleColor = () => {
     switch (state) {
-      case 'listening': return "border-blue-500/20"
+      case 'listening': return "border-white/30"
       case 'thinking': return "border-yellow-500/20"
       case 'speaking': return "border-purple-500/30"
-      default: return "border-white/5"
+      default: return "border-blue-500/20"
     }
   }
 
