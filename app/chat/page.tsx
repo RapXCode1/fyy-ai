@@ -18,6 +18,7 @@ import LiveVoiceModal from "@/components/chat/live-voice-modal"
 import { useUser, useSession, useAuth } from "@clerk/nextjs"
 import { createClerkSupabaseClient, getClerkSupabaseToken, isSupabaseConfigured } from "@/lib/supabase"
 import { HeroWelcomeAnimation } from "@/components/animations/welcome-animation"
+import { formatBrandedError, OFFICIAL_MODELS } from "@/lib/models"
 
 interface Message {
   id: string
@@ -190,12 +191,7 @@ export default function ChatPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const models = [
-    { id: "llama-3.3-70b-versatile", name: "FYY-Llama 3.3 (PRO)", description: "Ultimate-performance" },
-    { id: "meta-llama/llama-4-scout-17b-16e-instruct", name: "FYY-Llama 4 Scout", description: "Next-gen reasoning" },
-    { id: "openai/gpt-oss-120b", name: "FYY-GPT-OSS 120B", description: "High-performance" },
-    { id: "qwen/qwen3-32b", name: "FYY-Qwen 3 32B", description: "Super-reasoning" },
-  ]
+  const models = OFFICIAL_MODELS
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: isReceiving ? "auto" : "smooth" })
@@ -685,16 +681,8 @@ export default function ChatPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        let errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`
-
-        if (response.status === 429) {
-          errorMessage = "Rate limit reached. Please wait a moment or try another model."
-        } else if (response.status === 400) {
-          errorMessage = "Bad request. Please check input parameters or refresh."
-        } else if (response.status === 500) {
-          errorMessage = "Internal server error. Our AI is resting. Please try again."
-        }
-
+        const rawError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        const errorMessage = formatBrandedError(rawError, selectedModel)
         throw new Error(errorMessage)
       }
 
@@ -758,17 +746,15 @@ export default function ChatPage() {
 
     } catch (error) {
       console.error("Error sending message:", error)
-      let errorMessage = "Sorry, something went wrong. Please try again."
+      let errorMessage = "Maaf, terjadi kendala sesaat pada sistem. Silakan coba beberapa saat lagi."
 
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage = "Request timed out. Please check your connection and try again."
-        } else if (error.message.includes('Failed to fetch')) {
-          errorMessage = "Network error. Please check your internet connection."
-        } else if (error.message.includes('HTTP')) {
-          errorMessage = `Server error: ${error.message}`
+        if (error.name === "AbortError") {
+          errorMessage = "⏱️ Waktu tunggu permintaan habis (Request timed out). Silakan periksa koneksi internet Anda."
+        } else if (error.message.includes("Failed to fetch")) {
+          errorMessage = "🌐 Kendala jaringan. Silakan periksa koneksi internet Anda."
         } else {
-          errorMessage = `Error: ${error.message}`
+          errorMessage = formatBrandedError(error.message, selectedModel)
         }
       }
 

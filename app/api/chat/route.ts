@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
 import { globalSettings } from "@/lib/settings"
+import { formatBrandedError } from "@/lib/models"
 
 export const runtime = 'edge'
 
@@ -9,9 +10,10 @@ const groq = new Groq({
 })
 
 export async function POST(req: Request) {
+  let requestedModel = "llama-3.3-70b-versatile"
   try {
-
     const { messages, model, mode, isLiveMode, isGuest, isOwner } = await req.json()
+    if (model) requestedModel = model
 
     // Detect Owner Mode keyword or explicitly passed owner flag
     const isOwnerKeyword = isOwner || messages.some((m: any) => 
@@ -149,12 +151,11 @@ export async function POST(req: Request) {
         top_p: globalSettings.topP,
       });
     } catch (err: any) {
-      // If primary model fails due to rate limit, fallback to the faster/cheaper model
-      if (err?.status === 429 || err?.message?.includes("Rate limit")) {
-        console.warn(`Rate limit hit for ${finalModel}, falling back to llama-3.1-8b-instant`);
-        isFallback = true;
-        usedModel = "llama-3.1-8b-instant";
-        
+      console.warn(`Primary model ${finalModel} error (${err?.status || err?.code}): ${err?.message}, initiating smart fallback...`);
+      isFallback = true;
+      usedModel = "llama-3.1-8b-instant";
+      
+      try {
         response = await groq.chat.completions.create({
           model: "llama-3.1-8b-instant",
           messages: [
@@ -170,8 +171,8 @@ export async function POST(req: Request) {
           max_tokens: globalSettings.maxTokens,
           top_p: globalSettings.topP,
         });
-      } else {
-        throw err;
+      } catch (fallbackErr: any) {
+        throw fallbackErr || err;
       }
     }
 
@@ -205,8 +206,9 @@ export async function POST(req: Request) {
     })
   } catch (error: any) {
     console.error("Chat API error:", error)
+    const brandedError = formatBrandedError(error?.message || "Failed to process chat request", requestedModel)
     return NextResponse.json(
-      { error: error?.message || "Failed to process chat request" },
+      { error: brandedError },
       { status: error?.status || 500 }
     )
   }
