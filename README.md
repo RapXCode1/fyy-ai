@@ -2,7 +2,7 @@
   <img src="./public/logo.png" alt="FYY-AI Logo" width="140" />
 </p>
 
-<h1 align="center">⚡ FYY-AI — Next-Generation Multimodal AI Platform ⚡</h1>
+<h1 align="center">FYY-AI — Multimodal AI Platform</h1>
 
 <p align="center">
   <strong>The Ultimate All-in-One AI Ecosystem: Ultra-Fast Groq LPU Inference, Live Voice Calls, Multimodal Vision, AI Image Studio & Native Android Integration.</strong>
