@@ -427,6 +427,10 @@ Untuk mengompilasi aplikasi ke format APK Android:
 ## 👨‍💻 Profil Developer & Branding
 
 <p align="center">
+  <img src="./public/developer-logo.png" alt="RapXCode Developer Logo" width="120" />
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/ARCHITECT_%26_CREATOR-RapXCode-E11D48?style=for-the-badge" alt="Creator RapXCode" />
 </p>
 

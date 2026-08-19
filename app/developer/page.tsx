@@ -110,14 +110,13 @@ export default function DeveloperPage() {
           
           {/* Avatar frame */}
           <div className="relative w-32 h-32 flex-shrink-0">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-500/20 to-rose-500/20 blur-xl opacity-80" />
-            <div className="relative w-full h-full rounded-full border border-white/10 bg-[#121217] flex items-center justify-center shadow-xl">
-              <div className="text-center">
-                <span className="text-3xl font-black bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent">
-                  R
-                </span>
-                <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-widest font-black">RapXCode</p>
-              </div>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-500/25 to-rose-500/25 blur-2xl opacity-90 animate-pulse" />
+            <div className="relative w-full h-full rounded-3xl border border-white/10 bg-[#121217]/90 backdrop-blur-md flex items-center justify-center shadow-2xl p-3 overflow-hidden">
+              <img
+                src="/developer-logo.png"
+                alt="RapXCode Developer Logo"
+                className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.6)] hover:scale-105 transition-transform duration-300"
+              />
             </div>
           </div>
 

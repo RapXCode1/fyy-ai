@@ -500,6 +500,10 @@ export default function LandingPage() {
               © 2026 FYY-AI. All rights reserved. Powered by FYY-GROQ SYSTEM INTELLIGENCE.
             </p>
             <div className="flex items-center gap-4">
+              <Link href="/developer" className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition group">
+                <img src="/developer-logo.png" alt="RapXCode" className="w-4 h-4 object-contain group-hover:scale-110 transition-transform" />
+                <span className="font-medium text-[11px]">Built by RapXCode</span>
+              </Link>
               {[
                 ["GitHub", "https://github.com/RapXcode1"],
                 ["Instagram", "https://instagram.com/rhafialghfr_"],

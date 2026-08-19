@@ -8,6 +8,9 @@ const logoTrue = "C:/Users/RHAFI/.gemini/antigravity-ide/brain/ba5495fc-201b-4a5
 // ⚪ WHITE BG — HANYA untuk Android APK (launcher wajib solid background)
 const logoWhiteBg = "C:/Users/RHAFI/.gemini/antigravity-ide/brain/ba5495fc-201b-4a5b-810d-b8c513e74a78/.user_uploaded/media_1787165162590.jpg";
 
+// 👨‍💻 DEVELOPER LOGO — RapXCode RX Logo (transparent)
+const logoDev = "C:/Users/RHAFI/.gemini/antigravity-ide/brain/ba5495fc-201b-4a5b-810d-b8c513e74a78/.user_uploaded/media_1787169333580.png";
+
 const PUBLIC = "D:/fyy-ai-main/public";
 const ASSETS = "D:/fyy-ai-main/assets";
 
@@ -40,6 +43,11 @@ async function run() {
 
   await sharp(await transparentPng(512)).toFile(path.join(PUBLIC, "icon-bg.png"));
   console.log("✅ public/icon-bg.png");
+
+  // --- Developer Logo (RapXCode RX) ---
+  await sharp(logoDev).resize(512, 512, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(path.join(PUBLIC, "developer-logo.png"));
+  await sharp(logoDev).resize(512, 512, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toFile(path.join(PUBLIC, "rapxcode-logo.png"));
+  console.log("✅ public/developer-logo.png & public/rapxcode-logo.png");
 
   // og-image: dark obsidian bg + logo transparent di tengah
   const ogLogo = await transparentPng(420);
