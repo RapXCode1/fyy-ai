@@ -97,14 +97,14 @@ export default function ChatSidebar({
                     className="group relative flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200"
                     style={{
                       background: isSelected ? "rgba(255, 255, 255, 0.03)" : "transparent",
-                      borderLeft: isSelected ? "2px solid #2563FF" : "2px solid transparent",
+                      borderLeft: isSelected ? "2px solid #E11D48" : "2px solid transparent",
                     }}
                     onClick={() => onSelectConversation(conv.id)}
                   >
                     <MessageSquare
                       size={14}
                       style={{
-                        color: isSelected ? "#2563FF" : "#4B5563",
+                        color: isSelected ? "#E11D48" : "#4B5563",
                       }}
                       className="flex-shrink-0"
                     />
@@ -168,7 +168,7 @@ export default function ChatSidebar({
                   {user?.imageUrl ? (
                     <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-500/20 text-blue-400 font-bold text-xs">
+                    <div className="w-full h-full flex items-center justify-center bg-red-500/20 text-red-400 font-bold text-xs">
                       {user?.firstName?.[0] || 'U'}
                     </div>
                   )}

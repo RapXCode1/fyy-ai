@@ -5,7 +5,7 @@ import { globalSettings } from "@/lib/settings"
 export const runtime = 'edge'
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_build_key",
 })
 
 export async function POST(req: Request) {

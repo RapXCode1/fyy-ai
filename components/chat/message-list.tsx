@@ -106,7 +106,7 @@ export default function MessageList({
               {/* Assistant Avatar */}
               {!isUser && (
                 <div className="w-8 h-8 rounded-xl bg-[var(--fyf-surface)] border border-[var(--fyf-border)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Bot size={14} className="text-blue-400" />
+                  <Bot size={14} className="text-rose-400" />
                 </div>
               )}
 
@@ -119,7 +119,7 @@ export default function MessageList({
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full text-xs sm:text-sm bg-[var(--fyf-card)] border border-[var(--fyf-border)] rounded-xl p-2.5 resize-none text-[var(--fyf-text)] outline-none focus:border-blue-500"
+                      className="w-full text-xs sm:text-sm bg-[var(--fyf-card)] border border-[var(--fyf-border)] rounded-xl p-2.5 resize-none text-[var(--fyf-text)] outline-none focus:border-red-500"
                       rows={3}
                       autoFocus
                     />
@@ -132,7 +132,7 @@ export default function MessageList({
                       </button>
                       <button
                         onClick={handleSaveEdit}
-                        className="px-2.5 py-1 text-[10px] sm:text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        className="px-2.5 py-1 text-[10px] sm:text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                       >
                         Save
                       </button>
@@ -163,8 +163,8 @@ export default function MessageList({
                               />
                             ) : (
                               <div className="p-3 flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                                  <File size={15} className="text-blue-400" />
+                                <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                                  <File size={15} className="text-red-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-semibold text-[var(--fyf-text)] truncate">{attachment.name}</p>
@@ -239,7 +239,7 @@ export default function MessageList({
 
               {/* User Avatar */}
               {isUser && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md shadow-red-500/20">
                   <User size={14} className="text-white" />
                 </div>
               )}
@@ -256,7 +256,7 @@ export default function MessageList({
           className="flex gap-3.5"
         >
           <div className="w-8 h-8 rounded-xl bg-[var(--fyf-surface)] border border-[var(--fyf-border)] flex items-center justify-center flex-shrink-0">
-            <Sparkles size={14} className="text-blue-400 animate-pulse" />
+            <Sparkles size={14} className="text-rose-400 animate-pulse" />
           </div>
           
           <div className="px-4 py-3 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl rounded-tl-sm flex flex-col gap-2 min-w-[120px] max-w-[60%] w-full overflow-hidden relative">

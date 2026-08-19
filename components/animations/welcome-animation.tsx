@@ -31,7 +31,7 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
           {[...Array(20)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-2 h-2 bg-cyan-400/30 rounded-full animate-float-particle"
+              className="absolute w-2 h-2 bg-rose-400/30 rounded-full animate-float-particle"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
@@ -49,17 +49,17 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
         {showAnimation && (
           <div className="flex justify-center space-x-4 mb-8">
             <div className="animate-bounce-in" style={{ animationDelay: '0.2s' }}>
-              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 animate-pulse-glow">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse-glow">
                 <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
               </div>
             </div>
             <div className="animate-bounce-in" style={{ animationDelay: '0.4s' }}>
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30 animate-pulse-glow">
+              <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-red-700 rounded-full flex items-center justify-center shadow-lg shadow-rose-500/30 animate-pulse-glow">
                 <Brain size={28} className="text-white" />
               </div>
             </div>
             <div className="animate-bounce-in" style={{ animationDelay: '0.6s' }}>
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg shadow-yellow-500/30 animate-pulse-glow">
+              <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-rose-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse-glow">
                 <Zap size={28} className="text-white" />
               </div>
             </div>
@@ -70,7 +70,7 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
         {showContent && (
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold animate-typewriter">
-              <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent">
                 {title}
               </span>
             </h1>
@@ -85,7 +85,7 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
         {/* Animated underline */}
         {showContent && (
           <div className="animate-slide-in-left">
-            <div className="w-24 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full mx-auto animate-pulse-glow" />
+            <div className="w-24 h-1 bg-gradient-to-r from-red-500 to-white rounded-full mx-auto animate-pulse-glow" />
           </div>
         )}
       </div>
@@ -93,9 +93,9 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
       {/* Floating geometric shapes */}
       {showAnimation && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-4 h-4 border-2 border-cyan-400/30 rotate-45 animate-float-slow" />
-          <div className="absolute top-3/4 right-1/4 w-6 h-6 border-2 border-purple-400/30 rounded-full animate-float-slow" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-3/4 w-3 h-3 bg-pink-400/30 rotate-12 animate-float-slow" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-1/4 left-1/4 w-4 h-4 border-2 border-red-400/30 rotate-45 animate-float-slow" />
+          <div className="absolute top-3/4 right-1/4 w-6 h-6 border-2 border-rose-400/30 rounded-full animate-float-slow" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-3/4 w-3 h-3 bg-red-400/30 rotate-12 animate-float-slow" style={{ animationDelay: '2s' }} />
         </div>
       )}
     </div>
@@ -174,20 +174,20 @@ export function HeroWelcomeAnimation() {
       <div className="text-center space-y-8 animate-scale-in max-w-md px-4">
         {/* Logo animation */}
         <div className="animate-bounce-in">
-          <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-cyan-500/50 overflow-hidden">
+          <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-red-500/50 overflow-hidden">
             <img src="/logo.png" alt="FYY-AI Logo" className="w-20 h-20 object-contain animate-pulse" />
           </div>
         </div>
 
         {/* Welcome text */}
         <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-red-500 via-rose-400 to-white bg-clip-text text-transparent">
             Welcome to <span className="fyy-identity pr-2 inline-block">FYY-AI</span>
           </h1>
           <p className="text-lg text-gray-300 max-w-md mx-auto">
-            Experience the future of AI with stunning space-themed interface
+            Experience the future of AI with advanced Merah Putih intelligence
           </p>
-          <p className="text-xs text-cyan-400/70 animate-pulse font-medium mt-2">
+          <p className="text-xs text-rose-400/70 animate-pulse font-medium mt-2">
             (Tap anywhere to skip)
           </p>
         </div>
@@ -198,7 +198,7 @@ export function HeroWelcomeAnimation() {
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce"
+                className="w-3 h-3 bg-red-500 rounded-full animate-bounce"
                 style={{ animationDelay: `${i * 0.2}s` }}
               />
             ))}

@@ -56,20 +56,20 @@ export function AnimatedProgressBar({
     <div className={`space-y-2 ${className}`}>
       <div className="flex justify-between items-center">
         <span className="text-gray-300 text-sm font-medium">{skill}</span>
-        <span className="text-cyan-400 text-sm font-semibold">
+        <span className="text-rose-400 text-sm font-semibold">
           {Math.round(currentPercentage)}%
         </span>
       </div>
       <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full transition-all duration-300 ease-out relative overflow-hidden"
+          className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-white/90 rounded-full transition-all duration-300 ease-out relative overflow-hidden"
           style={{ width: `${currentPercentage}%` }}
         >
           {/* Animated shine effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine"></div>
 
           {/* Pulsing glow effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/50 to-purple-400/50 rounded-full animate-pulse-glow opacity-50"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500/50 to-rose-400/50 rounded-full animate-pulse-glow opacity-50"></div>
         </div>
       </div>
     </div>

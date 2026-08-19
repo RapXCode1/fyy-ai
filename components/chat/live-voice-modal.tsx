@@ -32,14 +32,14 @@ export default function LiveVoiceModal({
         }
       case 'speaking':
         return {
-          background: "linear-gradient(135deg, #8B5CF6, #7C3AED)",
-          boxShadow: "0 0 50px rgba(139, 92, 246, 0.5)",
+          background: "linear-gradient(135deg, #FF4D6D, #E11D48)",
+          boxShadow: "0 0 50px rgba(225, 29, 72, 0.55)",
           transform: "scale(1.15)"
         }
       default:
         return {
-          background: "linear-gradient(135deg, #2563FF, #1D4ED8)",
-          boxShadow: "0 0 40px rgba(37, 99, 255, 0.4)",
+          background: "linear-gradient(135deg, #E11D48, #991B1B)",
+          boxShadow: "0 0 40px rgba(225, 29, 72, 0.4)",
           transform: "scale(0.9)"
         }
     }
@@ -47,10 +47,10 @@ export default function LiveVoiceModal({
 
   const getRippleColor = () => {
     switch (state) {
-      case 'listening': return "border-white/30"
+      case 'listening': return "border-white/40"
       case 'thinking': return "border-yellow-500/20"
-      case 'speaking': return "border-purple-500/30"
-      default: return "border-blue-500/20"
+      case 'speaking': return "border-red-500/40"
+      default: return "border-red-500/20"
     }
   }
 
@@ -67,14 +67,14 @@ export default function LiveVoiceModal({
     <div
       className="fixed inset-0 z-[200] flex flex-col items-center justify-between p-8 sm:p-12 animate-fade-in"
       style={{
-        background: "rgba(6, 8, 22, 0.98)",
+        background: "rgba(8, 8, 10, 0.98)",
         backdropFilter: "blur(30px)"
       }}
     >
       {/* Header */}
       <div className="w-full text-center mt-6 space-y-2">
         <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center justify-center gap-2">
-          <Sparkles size={14} className="text-blue-400" />
+          <Sparkles size={14} className="text-rose-400" />
           FYY-AI Voice Call
         </h2>
         

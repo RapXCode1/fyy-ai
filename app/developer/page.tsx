@@ -88,10 +88,10 @@ export default function DeveloperPage() {
   ]
 
   return (
-    <div className="min-h-screen text-white overflow-x-hidden selection-enabled" style={{ background: "#060816" }}>
+    <div className="min-h-screen text-white overflow-x-hidden selection-enabled" style={{ background: "#08080A" }}>
       
       {/* Navbar header */}
-      <nav className="fixed top-0 inset-x-0 z-50 h-16 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 bg-[#060816]/80 backdrop-blur-md">
+      <nav className="fixed top-0 inset-x-0 z-50 h-16 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 bg-[#08080A]/80 backdrop-blur-md">
         <Link href="/" className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-white transition">
           <ArrowLeft size={14} />
           Back to Home
@@ -110,10 +110,10 @@ export default function DeveloperPage() {
           
           {/* Avatar frame */}
           <div className="relative w-32 h-32 flex-shrink-0">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 blur-xl opacity-80" />
-            <div className="relative w-full h-full rounded-full border border-white/10 bg-[#0E1324] flex items-center justify-center shadow-xl">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-500/20 to-rose-500/20 blur-xl opacity-80" />
+            <div className="relative w-full h-full rounded-full border border-white/10 bg-[#121217] flex items-center justify-center shadow-xl">
               <div className="text-center">
-                <span className="text-3xl font-black bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                <span className="text-3xl font-black bg-gradient-to-r from-red-400 to-rose-300 bg-clip-text text-transparent">
                   R
                 </span>
                 <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-widest font-black">RapXCode</p>
@@ -128,7 +128,7 @@ export default function DeveloperPage() {
                 RapXCode
                 <Sparkles size={16} className="text-yellow-400" />
               </h1>
-              <p className="text-sm font-semibold text-blue-400 tracking-wide">
+              <p className="text-sm font-semibold text-rose-400 tracking-wide">
                 Full-Stack Systems Architect & AI Specialist
               </p>
             </div>
@@ -159,7 +159,7 @@ export default function DeveloperPage() {
               </a>
               <a
                 href="mailto:rapxcode1@gmail.com"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-400 hover:bg-blue-500/20 transition"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-[11px] text-rose-400 hover:bg-red-500/20 transition"
               >
                 <Mail size={12} />
                 Contact Email
@@ -172,7 +172,7 @@ export default function DeveloperPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-10">
           {stats.map((s, idx) => (
             <div key={idx} className="p-4 bg-white/[0.01] border border-white/5 rounded-2xl text-center">
-              <p className="text-lg font-bold text-blue-400">{s.number}</p>
+              <p className="text-lg font-bold text-rose-400">{s.number}</p>
               <p className="text-[10px] text-gray-500 mt-0.5 uppercase tracking-wider font-semibold">{s.label}</p>
             </div>
           ))}
@@ -188,7 +188,7 @@ export default function DeveloperPage() {
               onClick={() => setActiveTab(tab)}
               className="px-4 py-3 border-b-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors"
               style={{
-                borderColor: activeTab === tab ? "#2563FF" : "transparent",
+                borderColor: activeTab === tab ? "#E11D48" : "transparent",
                 color: activeTab === tab ? "#FFFFFF" : "#6B7280",
               }}
             >
@@ -203,7 +203,7 @@ export default function DeveloperPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen size={13} className="text-blue-400" /> Professional Background
+                  <BookOpen size={13} className="text-rose-400" /> Professional Background
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
                   I specialize in designing and engineering performant full-stack systems. My work targets clean code structures, beautiful and intuitive user experiences, fast APIs, and reliable client-to-server integrations.
@@ -214,19 +214,19 @@ export default function DeveloperPage() {
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Strategic Strengths</h3>
                 <ul className="space-y-1.5 text-xs text-gray-400">
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
                     Advanced Full-Stack Engineering
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
                     Large Language Model & Vision APIs
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
                     Real-time WebSocket & Client Sync
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
                     Premium Responsive UX Micro-Interactions
                   </li>
                 </ul>
@@ -243,8 +243,8 @@ export default function DeveloperPage() {
                   const Icon = ach.icon
                   return (
                     <div key={idx} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                        <Icon size={14} className="text-blue-400" />
+                      <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                        <Icon size={14} className="text-rose-400" />
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white">{ach.title}</p>
@@ -276,7 +276,7 @@ export default function DeveloperPage() {
                     <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tech Stack</p>
                     <div className="flex flex-wrap gap-1.5">
                       {proj.tech.map((t, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[9px] font-medium text-blue-400">
+                        <span key={i} className="px-2 py-0.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[9px] font-medium text-rose-400">
                           {t}
                         </span>
                       ))}
@@ -288,7 +288,7 @@ export default function DeveloperPage() {
                   <span className="text-gray-500 font-medium">{proj.stats}</span>
                   <a
                     href={proj.link}
-                    className="text-blue-400 hover:text-white font-bold transition-colors"
+                    className="text-rose-400 hover:text-white font-bold transition-colors"
                   >
                     View Project →
                   </a>
@@ -312,12 +312,12 @@ export default function DeveloperPage() {
                     <div key={i} className="space-y-1.5">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-gray-300 font-semibold">{skill.name}</span>
-                        <span className="text-blue-400 font-bold">{skill.percentage}%</span>
+                        <span className="text-rose-400 font-bold">{skill.percentage}%</span>
                       </div>
                       
                       <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                          className="h-full bg-gradient-to-r from-red-500 to-rose-600 rounded-full"
                           style={{ width: `${skill.percentage}%` }}
                         />
                       </div>

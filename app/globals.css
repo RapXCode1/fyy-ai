@@ -11,66 +11,68 @@
    ========================================================================== */
 
 :root {
-  /* FYY-AI Core Palette */
-  --fyf-bg:           #060816;
-  --fyf-surface:      #0E1324;
-  --fyf-card:         #111827;
-  --fyf-border:       rgba(255,255,255,0.06);
-  --fyf-border-hover: rgba(255,255,255,0.12);
-  --fyf-blue:         #2563FF;
-  --fyf-blue-hover:   #1D4ED8;
+  /* FYY-AI Core Palette — Merah Putih National Indonesia */
+  --fyf-bg:           #08080A;
+  --fyf-surface:      #121217;
+  --fyf-card:         #16171D;
+  --fyf-border:       rgba(255,255,255,0.07);
+  --fyf-border-hover: rgba(225,29,72,0.35);
+  --fyf-blue:         #E11D48;
+  --fyf-blue-hover:   #BE123C;
+  --fyf-red:          #E11D48;
+  --fyf-red-hover:    #BE123C;
   --fyf-text:         #FFFFFF;
   --fyf-text-secondary: #9CA3AF;
   --fyf-text-muted:   #6B7280;
   --fyf-success:      #22C55E;
   --fyf-danger:       #EF4444;
 
-  /* Shadcn compatibility tokens → mapped to FYY palette */
-  --background:          #060816;
+  /* Shadcn compatibility tokens → mapped to Merah Putih palette */
+  --background:          #08080A;
   --foreground:          #F9FAFB;
-  --card:                #111827;
+  --card:                #16171D;
   --card-foreground:     #F9FAFB;
-  --primary:             #2563FF;
+  --primary:             #E11D48;
   --primary-foreground:  #FFFFFF;
-  --secondary:           #0E1324;
+  --secondary:           #121217;
   --secondary-foreground:#9CA3AF;
-  --accent:              #1EA7FF;
+  --accent:              #FF4D6D;
   --accent-foreground:   #FFFFFF;
-  --muted:               #1C2333;
+  --muted:               #1A1A22;
   --muted-foreground:    #6B7280;
-  --border:              rgba(255,255,255,0.06);
-  --input:               #0E1324;
-  --ring:                #2563FF;
+  --border:              rgba(255,255,255,0.07);
+  --input:               #121217;
+  --ring:                #E11D48;
   --radius:              1rem;
 
   /* Theme system variables (used by theme-card etc.) */
   --theme-blur:        12px;
-  --theme-shadow:      0 4px 24px rgba(0,0,0,0.4);
+  --theme-shadow:      0 4px 24px rgba(0,0,0,0.5);
   --theme-border-width:1px;
 }
 
-/* Light mode — keep as subtle override, default is dark */
+/* Light mode — subtle Merah Putih override */
 .light {
   /* FYY-AI Core Palette overrides for Light Mode */
-  --fyf-bg:           #F8FAFC;
-  --fyf-surface:      #F1F5F9;
+  --fyf-bg:           #FAFAFA;
+  --fyf-surface:      #F4F4F5;
   --fyf-card:         #FFFFFF;
   --fyf-border:       rgba(0,0,0,0.08);
-  --fyf-border-hover: rgba(0,0,0,0.15);
+  --fyf-border-hover: rgba(225,29,72,0.4);
   --fyf-text:         #0F172A;
   --fyf-text-secondary: #64748B;
   --fyf-text-muted:   #94A3B8;
 
   /* Shadcn compatibility tokens */
-  --background:       #F8FAFC;
+  --background:       #FAFAFA;
   --foreground:       #0F172A;
   --card:             #FFFFFF;
   --card-foreground:  #0F172A;
-  --primary:          #2563FF;
-  --muted:            #F1F5F9;
+  --primary:          #E11D48;
+  --muted:            #F4F4F5;
   --muted-foreground: #64748B;
   --border:           rgba(0,0,0,0.08);
-  --input:            #F8FAFC;
+  --input:            #FAFAFA;
 }
 
 /* ============================================================
@@ -132,7 +134,7 @@
 }
 .fyf-card:hover {
   border-color: var(--fyf-border-hover);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 24px rgba(225,29,72,0.12);
 }
 
 /* Surface layer */
@@ -142,7 +144,7 @@
   border-radius: 14px;
 }
 
-/* Primary button */
+/* Primary button - Merah Indonesia */
 .fyf-btn-primary {
   background: var(--fyf-blue);
   color: #fff;
@@ -153,12 +155,12 @@
   padding: 0.625rem 1.25rem;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-  box-shadow: 0 2px 12px rgba(37,99,255,0.25);
+  box-shadow: 0 2px 14px rgba(225,29,72,0.35);
 }
 .fyf-btn-primary:hover {
   background: var(--fyf-blue-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(37,99,255,0.35);
+  box-shadow: 0 4px 22px rgba(225,29,72,0.5);
 }
 .fyf-btn-primary:active {
   transform: translateY(0);
@@ -183,17 +185,17 @@
 }
 
 /* ============================================================
-   ACCENT GRADIENT
+   ACCENT GRADIENT — Merah Putih
    ============================================================ */
 .fyf-gradient-text {
-  background: linear-gradient(90deg, #1EA7FF, #6A7DFF, #B84DFF);
+  background: linear-gradient(90deg, #FF4D6D 0%, #E11D48 45%, #FFFFFF 95%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .fyf-gradient-bg {
-  background: linear-gradient(135deg, #1EA7FF 0%, #6A7DFF 50%, #B84DFF 100%);
+  background: linear-gradient(135deg, #FF4D6D 0%, #E11D48 50%, #991B1B 100%);
 }
 
 /* ============================================================
@@ -349,9 +351,9 @@
 }
 
 @keyframes input-glow {
-  0% { box-shadow: 0 0 0 0 rgba(37,99,255,0); border-color: var(--fyf-border); }
-  50% { box-shadow: 0 0 16px rgba(37,99,255,0.15); border-color: rgba(37,99,255,0.4); }
-  100% { box-shadow: 0 0 0 0 rgba(37,99,255,0); border-color: var(--fyf-border); }
+  0% { box-shadow: 0 0 0 0 rgba(225,29,72,0); border-color: var(--fyf-border); }
+  50% { box-shadow: 0 0 16px rgba(225,29,72,0.25); border-color: rgba(225,29,72,0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(225,29,72,0); border-color: var(--fyf-border); }
 }
 
 .fyf-shimmer {
@@ -361,8 +363,8 @@
 }
 
 .fyf-focus-ring:focus-within {
-  border-color: rgba(37,99,255,0.4);
-  box-shadow: 0 0 0 1px rgba(37,99,255,0.2), 0 4px 24px rgba(0,0,0,0.4);
+  border-color: rgba(225,29,72,0.5);
+  box-shadow: 0 0 0 1px rgba(225,29,72,0.3), 0 4px 24px rgba(225,29,72,0.15);
   transition: all 0.3s ease;
 }
 

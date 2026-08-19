@@ -100,7 +100,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--fyf-border)] p-4 sm:p-5 flex-shrink-0">
             <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
-              <Settings className="w-4 h-4 text-blue-400" />
+              <Settings className="w-4 h-4 text-rose-400" />
               Settings Panel
             </h2>
             <button
@@ -117,13 +117,13 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
             {/* Section 1: System prompt */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
-                <Sliders size={12} className="text-blue-400" />
+                <Sliders size={12} className="text-rose-400" />
                 System Prompt
               </label>
               <textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
-                className="w-full h-24 px-3 py-2 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-xl text-xs sm:text-sm text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] outline-none focus:border-blue-500/50 resize-none transition-colors"
+                className="w-full h-24 px-3 py-2 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-xl text-xs sm:text-sm text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] outline-none focus:border-red-500/50 resize-none transition-colors"
                 placeholder="Instruct FYY-AI on how to act..."
               />
             </div>
@@ -131,7 +131,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
             {/* Section 2: Model parameters */}
             <div className="space-y-4 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl p-4">
               <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider">
-                <Sliders size={12} className="text-blue-400" />
+                <Sliders size={12} className="text-rose-400" />
                 Model Tuning
               </div>
 
@@ -139,7 +139,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="text-[var(--fyf-text-secondary)]">Temperature</span>
-                  <span className="text-blue-400 font-bold">{temperature.toFixed(2)}</span>
+                  <span className="text-rose-400 font-bold">{temperature.toFixed(2)}</span>
                 </div>
                 <input
                   type="range"
@@ -148,7 +148,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                   step="0.1"
                   value={temperature}
                   onChange={(e) => setTemperature(Number.parseFloat(e.target.value))}
-                  className="w-full h-1 bg-[var(--fyf-border)] rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  className="w-full h-1 bg-[var(--fyf-border)] rounded-lg appearance-none cursor-pointer accent-red-500"
                 />
               </div>
 
@@ -156,7 +156,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="text-[var(--fyf-text-secondary)]">Response Length (Max Tokens)</span>
-                  <span className="text-blue-400 font-bold">{maxTokens}</span>
+                  <span className="text-rose-400 font-bold">{maxTokens}</span>
                 </div>
                 <input
                   type="range"
@@ -165,7 +165,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                   step="100"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(Number.parseInt(e.target.value))}
-                  className="w-full h-1 bg-[var(--fyf-border)] rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  className="w-full h-1 bg-[var(--fyf-border)] rounded-lg appearance-none cursor-pointer accent-red-500"
                 />
               </div>
             </div>
@@ -173,7 +173,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
             {/* Section 3: Font Picker */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
-                <Type size={12} className="text-blue-400" />
+                <Type size={12} className="text-rose-400" />
                 Font Family
               </label>
               
@@ -205,8 +205,8 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                     }}
                     className="p-2.5 rounded-xl border text-left transition-all duration-200"
                     style={{
-                      background: fontFamily === font.id ? "rgba(37, 99, 255, 0.08)" : "transparent",
-                      borderColor: fontFamily === font.id ? "rgba(37, 99, 255, 0.3)" : "var(--fyf-border)",
+                      background: fontFamily === font.id ? "rgba(225, 29, 72, 0.12)" : "transparent",
+                      borderColor: fontFamily === font.id ? "rgba(225, 29, 72, 0.4)" : "var(--fyf-border)",
                     }}
                   >
                     <div className="text-xs font-bold text-[var(--fyf-text)]">{font.name}</div>
@@ -219,7 +219,7 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
             {/* Section 4: Design Style Theme selector */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
-                <Palette size={12} className="text-blue-400" />
+                <Palette size={12} className="text-rose-400" />
                 Design Theme Style
               </label>
               
@@ -234,8 +234,8 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                     onClick={() => setThemeStyle(style.id)}
                     className="p-2.5 rounded-xl border text-left transition-all duration-200"
                     style={{
-                      background: themeStyle === style.id ? "rgba(37, 99, 255, 0.08)" : "transparent",
-                      borderColor: themeStyle === style.id ? "rgba(37, 99, 255, 0.3)" : "var(--fyf-border)",
+                      background: themeStyle === style.id ? "rgba(225, 29, 72, 0.12)" : "transparent",
+                      borderColor: themeStyle === style.id ? "rgba(225, 29, 72, 0.4)" : "var(--fyf-border)",
                     }}
                   >
                     <div className="text-xs font-bold text-[var(--fyf-text)]">{style.name}</div>
@@ -246,9 +246,9 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
             </div>
 
             {/* Advice notice */}
-            <div className="flex items-start gap-2.5 p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
-              <Info size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-[10px] text-blue-400/90 leading-relaxed">
+            <div className="flex items-start gap-2.5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl">
+              <Info size={14} className="text-rose-400 mt-0.5 flex-shrink-0" />
+              <p className="text-[10px] text-rose-300/90 leading-relaxed">
                 Tip: Each AI Mode has optimized parameters by default. Saving these custom adjustments overrides defaults and saves them to your local preference database.
               </p>
             </div>

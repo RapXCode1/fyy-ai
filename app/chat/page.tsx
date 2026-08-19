@@ -964,7 +964,7 @@ export default function ChatPage() {
               <button
                 onClick={() => setShowModesSelector(!showModesSelector)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                  showModesSelector ? "bg-blue-600 text-white" : "hover:bg-white/5 text-gray-400 hover:text-white"
+                  showModesSelector ? "bg-red-600 text-white" : "hover:bg-white/5 text-gray-400 hover:text-white"
                 }`}
                 data-panel-trigger
               >
@@ -1040,8 +1040,8 @@ export default function ChatPage() {
         </div>
 
         {showSyncBanner && (
-          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl border border-blue-500/20 bg-[var(--fyf-surface)]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-fade-up z-30">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5" />
+          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl border border-red-500/20 bg-[var(--fyf-surface)]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-fade-up z-30">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-rose-500/5 to-white/5" />
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-2.5">
               <span className="text-lg">📲</span>
               <div className="flex flex-col">
@@ -1083,7 +1083,7 @@ export default function ChatPage() {
                     alert("Error retrieving session credentials.");
                   }
                 }}
-                className="py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all duration-300 shadow-md shadow-blue-500/15"
+                className="py-1.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all duration-300 shadow-md shadow-red-500/15"
               >
                 Sync to Mobile App
               </button>
@@ -1126,7 +1126,7 @@ export default function ChatPage() {
             <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
-                  <Layers size={14} className="text-blue-400" /> Choose AI Mode
+                  <Layers size={14} className="text-rose-400" /> Choose AI Mode
                 </h2>
                 <button
                   onClick={() => setShowModesSelector(false)}
@@ -1145,7 +1145,7 @@ export default function ChatPage() {
             <div className="w-full max-w-md bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
-                  <Brain size={14} className="text-blue-400" /> Choose Intelligence Model
+                  <Brain size={14} className="text-rose-400" /> Choose Intelligence Model
                 </h2>
                 <button
                   onClick={() => setShowModelSelector(false)}
@@ -1175,7 +1175,7 @@ export default function ChatPage() {
             <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-3xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
-                  <Sparkles size={14} className="text-blue-400" /> AI Image Studio
+                  <Sparkles size={14} className="text-rose-400" /> AI Image Studio
                 </h2>
                 <button
                   onClick={() => setShowImageGenerator(false)}
@@ -1303,7 +1303,7 @@ export default function ChatPage() {
                   document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
                   import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-wide transition-all duration-300"
+                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs tracking-wide transition-all duration-300 shadow-lg shadow-red-500/20"
               >
                 Create Free Account
               </button>

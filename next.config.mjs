@@ -1,11 +1,8 @@
 // next.config.mjs
-import withPWA from 'next-pwa';
-
 /** @type {import('next').NextConfig} */
 const baseConfig = {
   // Enable React strict mode and SWC minification
   reactStrictMode: true,
-  turbopack: {},
 
   // Image handling – use remotePatterns (Next 16) instead of deprecated domains
   images: {
@@ -31,40 +28,5 @@ const baseConfig = {
     ];
   },
 };
-// 🎉 PWA configuration – only applied in production builds
-const nextConfig = process.env.NODE_ENV === 'production'
-  ? withPWA({
-      dest: 'public',
-      register: true,
-      skipWaiting: true,
-      // Default caching strategies
-      runtimeCaching: [
-        {
-          urlPattern: /^\/(_next\/static\/.*)\.(js|css)$/,
-          handler: 'CacheFirst',
-          options: {
-            cacheName: 'next-static-assets',
-            expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-          },
-        },
-        {
-          urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
-          handler: 'CacheFirst',
-          options: {
-            cacheName: 'next-image-assets',
-            expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 },
-          },
-        },
-        {
-          urlPattern: /\/api\/.*$/,
-          handler: 'StaleWhileRevalidate',
-          options: {
-            cacheName: 'api-cache',
-            expiration: { maxEntries: 100, maxAgeSeconds: 60 * 5 },
-          },
-        },
-      ],
-    })(baseConfig)
-  : baseConfig;
 
-export default nextConfig;
+export default baseConfig;

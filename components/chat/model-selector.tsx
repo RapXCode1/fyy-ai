@@ -38,13 +38,13 @@ export default function ModelSelector({ models, selectedModel, onSelectModel }: 
               className="group relative flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-300"
               style={{
                 background: isSelected ? "rgba(255, 255, 255, 0.02)" : "rgba(255, 255, 255, 0.01)",
-                borderColor: isSelected ? "rgba(37, 99, 255, 0.3)" : "rgba(255, 255, 255, 0.05)",
-                borderLeft: isSelected ? "3px solid #2563FF" : "1px solid rgba(255, 255, 255, 0.05)",
+                borderColor: isSelected ? "rgba(225, 29, 72, 0.4)" : "rgba(255, 255, 255, 0.05)",
+                borderLeft: isSelected ? "3px solid #E11D48" : "1px solid rgba(255, 255, 255, 0.05)",
               }}
             >
               <div className="flex-1 min-w-0 pr-4">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-semibold text-sm text-white group-hover:text-blue-400 transition-colors">
+                  <span className="font-semibold text-sm text-white group-hover:text-rose-400 transition-colors">
                     {model.name}
                   </span>
                   
@@ -55,13 +55,13 @@ export default function ModelSelector({ models, selectedModel, onSelectModel }: 
                   )}
 
                   {!isLocked && model.id.includes("pro") && (
-                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-yellow-400 to-amber-500 text-black rounded-md uppercase flex items-center gap-0.5">
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-md uppercase flex items-center gap-0.5">
                       <Sparkles size={8} /> PRO
                     </span>
                   )}
 
                   {!isLocked && model.id.includes("flash") && (
-                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md uppercase">
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 rounded-md uppercase">
                       FAST
                     </span>
                   )}
@@ -75,7 +75,7 @@ export default function ModelSelector({ models, selectedModel, onSelectModel }: 
               <div
                 className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  background: isSelected ? "#2563FF" : isLocked ? "rgba(234, 179, 8, 0.1)" : "rgba(255, 255, 255, 0.05)",
+                  background: isSelected ? "#E11D48" : isLocked ? "rgba(234, 179, 8, 0.1)" : "rgba(255, 255, 255, 0.05)",
                   border: isSelected ? "none" : isLocked ? "1px solid rgba(234, 179, 8, 0.2)" : "1px solid rgba(255, 255, 255, 0.1)",
                 }}
               >

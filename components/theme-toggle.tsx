@@ -32,17 +32,17 @@ export function ThemeToggle() {
     >
       <div className="relative z-10 transition-all duration-500 ease-in-out">
         {theme === "light" ? (
-          <Moon className="h-4 w-4 transition-all duration-300 group-hover:text-blue-400" />
+          <Moon className="h-4 w-4 transition-all duration-300 group-hover:text-rose-400" />
         ) : (
-          <Sun className="h-4 w-4 transition-all duration-300 group-hover:text-yellow-400" />
+          <Sun className="h-4 w-4 transition-all duration-300 group-hover:text-amber-400" />
         )}
       </div>
 
       {/* Animated background effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-md" />
+      <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-md" />
 
       {/* Ripple effect */}
-      <div className="absolute inset-0 rounded-md bg-gradient-to-r from-cyan-500/10 to-purple-500/10 scale-0 group-active:scale-100 transition-transform duration-150" />
+      <div className="absolute inset-0 rounded-md bg-gradient-to-r from-red-500/10 to-rose-500/10 scale-0 group-active:scale-100 transition-transform duration-150" />
     </Button>
   )
 }

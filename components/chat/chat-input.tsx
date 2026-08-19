@@ -193,7 +193,7 @@ export default function ChatInput({
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
               <span>Attached Files ({uploadedFiles.length})</span>
               {isAnalyzing && (
-                <span className="text-blue-400 animate-pulse flex items-center gap-1.5 font-normal">
+                <span className="text-rose-400 animate-pulse flex items-center gap-1.5 font-normal">
                   <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent" />
                   Analyzing document...
                 </span>
