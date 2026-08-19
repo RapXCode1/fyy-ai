@@ -16,7 +16,7 @@ import { useSpeechOutput } from "@/hooks/use-voice-input"
 import { useMicrophonePermission } from "@/hooks/use-microphone-permission"
 import LiveVoiceModal from "@/components/chat/live-voice-modal"
 import { useUser, useSession, useAuth } from "@clerk/nextjs"
-import { createClerkSupabaseClient } from "@/lib/supabase"
+import { createClerkSupabaseClient, getClerkSupabaseToken, isSupabaseConfigured } from "@/lib/supabase"
 import { HeroWelcomeAnimation } from "@/components/animations/welcome-animation"
 
 interface Message {
@@ -332,9 +332,18 @@ export default function ChatPage() {
   useEffect(() => {
     if (user && session && !initialLoadDone) {
       const fetchConversations = async () => {
+        if (!isSupabaseConfigured()) {
+          setInitialLoadDone(true)
+          return
+        }
         try {
-          const token = await session.getToken({ template: 'supabase' })
-          const supabase = createClerkSupabaseClient(token || '')
+          const token = await getClerkSupabaseToken(session)
+          const supabase = createClerkSupabaseClient(token)
+
+          if (!supabase) {
+            setInitialLoadDone(true)
+            return
+          }
 
           const { data, error } = await supabase
             .from('conversations')
@@ -342,7 +351,7 @@ export default function ChatPage() {
             .order('created_at', { ascending: false })
 
           if (error) {
-            console.error('Failed to load from Supabase:', error)
+            console.warn('Supabase sync skipped:', error.message)
             setInitialLoadDone(true)
             return
           }
@@ -387,7 +396,7 @@ export default function ChatPage() {
           }
           setInitialLoadDone(true)
         } catch (e) {
-          console.error("Error fetching auth token:", e)
+          console.warn("Supabase fetch skipped:", e)
           setInitialLoadDone(true)
         }
       }
@@ -397,13 +406,14 @@ export default function ChatPage() {
 
   // Sync current conversation to Supabase
   useEffect(() => {
-    if (isClient && initialLoadDone && user && session && currentConversationId) {
+    if (isClient && initialLoadDone && user && session && currentConversationId && isSupabaseConfigured()) {
       const currentConv = conversations.find(c => c.id === currentConversationId)
       if (currentConv) {
         const syncToSupabase = async () => {
           try {
-            const token = await session.getToken({ template: 'supabase' })
-            const supabase = createClerkSupabaseClient(token || '')
+            const token = await getClerkSupabaseToken(session)
+            const supabase = createClerkSupabaseClient(token)
+            if (!supabase) return
 
             await supabase.from('conversations').upsert({
               id: currentConv.id,
@@ -415,7 +425,7 @@ export default function ChatPage() {
               created_at: currentConv.createdAt.toISOString()
             })
           } catch (e) {
-            console.error("Failed to sync to Supabase:", e)
+            console.warn("Failed to sync to Supabase:", e)
           }
         }
         syncToSupabase()
@@ -474,13 +484,15 @@ export default function ChatPage() {
       }
     }
 
-    if (user && session) {
+    if (user && session && isSupabaseConfigured()) {
       try {
-        const token = await session.getToken({ template: 'supabase' })
-        const supabase = createClerkSupabaseClient(token || '')
-        await supabase.from('conversations').delete().eq('id', id)
+        const token = await getClerkSupabaseToken(session)
+        const supabase = createClerkSupabaseClient(token)
+        if (supabase) {
+          await supabase.from('conversations').delete().eq('id', id)
+        }
       } catch (e) {
-        console.error("Failed to delete conversation:", e)
+        console.warn("Failed to delete conversation from Supabase:", e)
       }
     }
   }
