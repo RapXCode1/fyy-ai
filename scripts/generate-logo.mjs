@@ -26,6 +26,9 @@ async function run() {
   await sharp(await transparentPng(512)).toFile(path.join(PUBLIC, "logo-nobg.png"));
   console.log("✅ public/logo-nobg.png");
 
+  await sharp(await transparentPng(512)).toFile(path.join(PUBLIC, "brand-logo.png"));
+  console.log("✅ public/brand-logo.png");
+
   await sharp(await transparentPng(512)).toFile(path.join(PUBLIC, "icon-512.png"));
   console.log("✅ public/icon-512.png");
 

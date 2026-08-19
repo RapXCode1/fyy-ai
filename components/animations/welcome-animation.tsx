@@ -50,7 +50,7 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
           <div className="flex justify-center space-x-4 mb-8">
             <div className="animate-bounce-in" style={{ animationDelay: '0.2s' }}>
               <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse-glow overflow-hidden">
-                <img src="/logo-nobg.png" alt="Logo" className="w-16 h-16 object-contain" />
+                <img src="/brand-logo.png" alt="Logo" className="w-16 h-16 object-contain" />
               </div>
             </div>
             <div className="animate-bounce-in" style={{ animationDelay: '0.4s' }}>
@@ -175,7 +175,7 @@ export function HeroWelcomeAnimation() {
         {/* Logo animation */}
         <div className="animate-bounce-in">
           <div className="w-28 h-28 flex items-center justify-center mx-auto">
-            <img src="/logo-nobg.png" alt="FYY-AI Logo" className="w-28 h-28 object-contain drop-shadow-[0_0_24px_rgba(225,29,72,0.6)] animate-pulse" />
+            <img src="/brand-logo.png" alt="FYY-AI Logo" className="w-28 h-28 object-contain drop-shadow-[0_0_24px_rgba(225,29,72,0.6)] animate-pulse" />
           </div>
         </div>
 

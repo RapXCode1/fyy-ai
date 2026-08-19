@@ -957,7 +957,7 @@ export default function ChatPage() {
             
             <div className="flex items-center gap-2 min-w-0 overflow-hidden">
               <div className="w-7 h-7 flex-shrink-0">
-                <img src="/logo-nobg.png" alt="FYY-AI" className="w-full h-full object-contain" />
+                <img src="/brand-logo.png" alt="FYY-AI" className="w-full h-full object-contain" />
               </div>
               <div className="flex flex-col min-w-0">
                 <h1 className="text-sm font-bold tracking-tight text-[var(--fyf-text)] leading-none">
@@ -1211,7 +1211,7 @@ export default function ChatPage() {
               
               <div className="relative">
                 <div className="w-20 h-20 flex items-center justify-center">
-                  <img src="/logo-nobg.png" alt="FYY-AI" className="w-20 h-20 object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.5)]" />
+                  <img src="/brand-logo.png" alt="FYY-AI" className="w-20 h-20 object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.5)]" />
                 </div>
               </div>
               

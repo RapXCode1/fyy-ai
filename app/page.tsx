@@ -141,7 +141,7 @@ export default function LandingPage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
-              <img src="/logo-nobg.png" alt="FYY-AI" className="w-full h-full object-contain" />
+              <img src="/brand-logo.png" alt="FYY-AI" className="w-full h-full object-contain" />
             </div>
             <span className="text-base font-semibold tracking-tight">FYY-AI</span>
           </Link>

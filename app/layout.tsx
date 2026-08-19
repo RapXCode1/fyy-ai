@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   generator: "fyy-ai",
   icons: {
     icon: [
-      { url: "/logo-nobg.png", type: "image/png" },
+      { url: "/brand-logo.png", type: "image/png" },
     ],
     apple: "/apple-icon.png",
   },
