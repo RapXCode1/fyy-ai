@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect } from "react"
-import { ShieldAlert, RefreshCw, User } from "lucide-react"
+import Link from "next/link"
+import { RefreshCw, Home, MessageSquare } from "lucide-react"
 
 export default function PageError({
   error,
@@ -11,53 +12,54 @@ export default function PageError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error("Page error detected:", error)
+    console.error("Application error:", error)
   }, [error])
-
-  const handleEnterGuestMode = () => {
-    const date = new Date()
-    date.setTime(date.getTime() + 24 * 60 * 60 * 1000) // 1 day
-    document.cookie = `fyy_guest=true; path=/; expires=${date.toUTCString()}; SameSite=Strict`
-    window.location.href = "/chat"
-  }
 
   return (
     <div className="min-h-screen bg-[#08080A] flex items-center justify-center p-4">
-      <div className="relative w-full max-w-md p-6 rounded-2xl border border-red-500/30 bg-neutral-900/90 text-center shadow-2xl">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-rose-600 rounded-2xl blur opacity-30 -z-10" />
+      <div className="relative w-full max-w-md p-6 rounded-2xl border border-white/10 bg-[#121217] text-center shadow-2xl space-y-6">
         
-        <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4">
-          <ShieldAlert size={28} className="text-rose-400" />
+        {/* Brand Icon */}
+        <div className="w-16 h-16 mx-auto flex items-center justify-center">
+          <img src="/brand-logo.png" alt="FYY-AI" className="w-14 h-14 object-contain" />
         </div>
 
-        <h2 className="text-2xl font-black italic tracking-tighter text-white mb-2">
-          FYY-AI SYSTEM SHIELD
-        </h2>
-        
-        <p className="text-sm text-gray-300 mb-6 leading-relaxed">
-          Browser atau ekstensi AdBlocker memblokir beberapa skrip sistem. Kamu bisa matikan AdBlocker/DNS pemblokir untuk halaman ini, atau langsung masuk sebagai Tamu!
-        </p>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white">
+            Ada Sedikit Kendala
+          </h2>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Halaman mengalami gangguan sesaat. Kamu bisa memuat ulang halaman atau langsung kembali ke Chat.
+          </p>
+        </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           <button
-            onClick={handleEnterGuestMode}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-sm tracking-wide transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+            onClick={() => reset()}
+            className="w-full py-3 px-4 rounded-xl fyf-btn-primary text-white font-semibold text-xs tracking-wide transition-all cursor-pointer flex items-center justify-center gap-2"
           >
-            <User size={16} />
-            Masuk via Mode Tamu (Guest Mode)
+            <RefreshCw size={14} />
+            Muat Ulang (Refresh)
           </button>
           
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 font-bold text-sm tracking-wide transition-all duration-300 cursor-pointer flex items-center justify-center gap-2"
+          <Link
+            href="/chat"
+            className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 font-semibold text-xs tracking-wide transition-all flex items-center justify-center gap-2"
           >
-            <RefreshCw size={16} />
-            Coba Ulangi
-          </button>
+            <MessageSquare size={14} />
+            Buka FYY-AI Chat
+          </Link>
+
+          <Link
+            href="/"
+            className="text-xs text-gray-500 hover:text-gray-300 transition pt-1"
+          >
+            Kembali ke Beranda
+          </Link>
         </div>
 
-        <p className="text-[10px] text-gray-500 mt-6 font-medium">
-          Fyy Security Protocol • Engineered by RapXCode
+        <p className="text-[10px] text-gray-600">
+          FYY-AI Platform • Built by RapXCode
         </p>
       </div>
     </div>
