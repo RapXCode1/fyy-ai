@@ -111,7 +111,7 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
             </p>
             <button
               onClick={() => setUploadedFiles([])}
-              className="text-[10px] text-gray-500 hover:text-red-400 transition-colors"
+              className="text-[10px] text-gray-500 hover:text-rose-400 transition-colors"
             >
               Clear all
             </button>
@@ -130,8 +130,8 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
                     className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-[var(--fyf-border)]"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                    <File size={13} className="text-blue-400" />
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+                    <File size={13} className="text-rose-400" />
                   </div>
                 )}
 
@@ -143,7 +143,7 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleDownloadFile(file)}
-                    className="p-1.5 hover:bg-[var(--fyf-border)] text-gray-400 hover:text-blue-400 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-[var(--fyf-border)] text-gray-400 hover:text-rose-400 rounded-lg transition-colors"
                     title="Download item"
                   >
                     <Download size={12} />

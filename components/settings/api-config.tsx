@@ -16,7 +16,6 @@ export default function APIConfig() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback for browsers that don't support Clipboard API or when blocked
       console.warn('Clipboard API not available, using fallback method')
       const textArea = document.createElement('textarea')
       textArea.value = apiKey
@@ -59,21 +58,21 @@ export default function APIConfig() {
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
             </Button>
             <Button variant="ghost" size="icon" onClick={handleCopyKey} className="hover:bg-muted">
-              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+              {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
             </Button>
           </div>
         </div>
 
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-          <p className="text-xs text-blue-300">
-            Get your free API key from{" "}
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-3">
+          <p className="text-xs text-rose-300">
+            Dapatkan API key Groq LPU gratis kamu dari{" "}
             <a
-              href="https://ai.google.dev"
+              href="https://console.groq.com/keys"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline font-semibold hover:text-blue-200"
+              className="underline font-semibold text-rose-400 hover:text-white transition-colors"
             >
-              Google AI Studio
+              Groq Console
             </a>
           </p>
         </div>

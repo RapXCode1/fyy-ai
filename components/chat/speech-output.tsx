@@ -17,7 +17,7 @@ export default function SpeechOutput({ text }: SpeechOutputProps) {
       variant="ghost"
       size="icon"
       title={isSpeaking ? "Stop speaking" : "Read message aloud"}
-      className={isSpeaking ? "text-cyan-400" : ""}
+      className={isSpeaking ? "text-rose-500 animate-pulse" : "text-gray-400 hover:text-rose-400"}
     >
       {isSpeaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
     </Button>

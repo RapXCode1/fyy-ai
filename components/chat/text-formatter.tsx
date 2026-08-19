@@ -74,7 +74,7 @@ const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any
           onMouseUp={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onClick={handleDownload}
-          className="p-1.5 rounded-md bg-muted/80 backdrop-blur border border-border/50 text-muted-foreground hover:text-purple-400 hover:bg-muted shadow-sm"
+          className="p-1.5 rounded-md bg-muted/80 backdrop-blur border border-border/50 text-muted-foreground hover:text-rose-400 hover:bg-muted shadow-sm transition-colors"
           title="Download source file"
         >
           <Download size={14} />
@@ -84,13 +84,13 @@ const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any
           onMouseUp={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onClick={handleCopy}
-          className="p-1.5 rounded-md bg-muted/80 backdrop-blur border border-border/50 text-muted-foreground hover:text-cyan-400 hover:bg-muted shadow-sm flex items-center gap-1.5"
+          className="p-1.5 rounded-md bg-muted/80 backdrop-blur border border-border/50 text-muted-foreground hover:text-rose-400 hover:bg-muted shadow-sm flex items-center gap-1.5 transition-colors"
           title="Copy code"
         >
           {copied ? (
             <>
-              <Check size={14} className="text-green-500" />
-              <span className="text-xs font-medium text-green-500 pr-1">Copied</span>
+              <Check size={14} className="text-emerald-500" />
+              <span className="text-xs font-medium text-emerald-500 pr-1">Copied</span>
             </>
           ) : (
             <Copy size={14} />
@@ -122,25 +122,25 @@ const TextFormatter = memo(function TextFormatter({ content }: TextFormatterProp
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({children}) => <div className="mb-4 last:mb-0 text-foreground/90">{children}</div>,
-          strong: ({children}) => <strong className="font-bold text-cyan-400">{children}</strong>,
-          em: ({children}) => <em className="italic text-purple-400">{children}</em>,
+          p: ({children}) => <div className="mb-4 last:mb-0 text-foreground/90 leading-relaxed">{children}</div>,
+          strong: ({children}) => <strong className="font-bold text-rose-400">{children}</strong>,
+          em: ({children}) => <em className="italic text-white/90">{children}</em>,
           ul: ({children}) => <ul className="list-disc ml-5 mb-4 space-y-1.5 text-foreground/90">{children}</ul>,
           ol: ({children}) => <ol className="list-decimal ml-5 mb-4 space-y-1.5 text-foreground/90">{children}</ol>,
           li: ({children}) => <li className="pl-1">{children}</li>,
-          h1: ({children}) => <h1 className="text-xl font-bold mb-4 mt-6 text-cyan-500 border-b border-border/50 pb-1">{children}</h1>,
-          h2: ({children}) => <h2 className="text-lg font-bold mb-3 mt-5 text-purple-500">{children}</h2>,
+          h1: ({children}) => <h1 className="text-xl font-bold mb-4 mt-6 text-rose-500 border-b border-border/50 pb-1">{children}</h1>,
+          h2: ({children}) => <h2 className="text-lg font-bold mb-3 mt-5 text-rose-400">{children}</h2>,
           h3: ({children}) => <h3 className="text-md font-bold mb-2 mt-4 text-foreground">{children}</h3>,
           code: ({node, inline, className, children, ...props}: any) => {
             return inline ? (
-              <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-cyan-400" {...props}>
+              <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-rose-400" {...props}>
                 {children}
               </code>
             ) : (
               <CodeBlock className={className} {...props}>{children}</CodeBlock>
             )
           },
-          blockquote: ({children}) => <blockquote className="border-l-4 border-cyan-500 pl-4 italic my-4 text-muted-foreground">{children}</blockquote>,
+          blockquote: ({children}) => <blockquote className="border-l-4 border-rose-500 pl-4 italic my-4 text-muted-foreground">{children}</blockquote>,
         }}
       >
         {content}
