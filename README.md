@@ -432,7 +432,7 @@ Untuk mengompilasi aplikasi ke format APK Android:
 
 **FYY-AI** dirancang, dikembangkan, dan dipelihara secara mandiri oleh:
 
-### **RapXCode (Rhafi Al Ghifari)**
+### **RapXCode (Rhafi Al Ghofar)**
 *Full-Stack Systems Architect & AI Specialist*
 
 - 🌐 **GitHub**: [@RapXcode1](https://github.com/RapXcode1)
@@ -450,5 +450,5 @@ Bebas digunakan, dimodifikasi, dan dikembangkan lebih lanjut dengan tetap menyer
 ---
 
 <p align="center">
-  <strong>⚡ FYY-AI — Built with Passion, Precision & Indonesian Merah Putih Pride by RapXCode © 2026 ⚡</strong>
+  <strong>⚡ FYY-AI — Built by RapXCode © 2026 ⚡</strong>
 </p>
