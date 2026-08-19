@@ -27,7 +27,7 @@
 
 **FYY-AI** adalah platform kecerdasan buatan (AI) generasi masa depan yang dirancang dan dikembangkan secara mandiri oleh **[RapXCode](https://github.com/RapXCode1)**. Platform ini menggabungkan kecepatan inferensi luar biasa dari **Groq LPU**, model penalaran mutakhir (Llama 3.3, Llama 4 Scout, GPT-OSS 120B, Qwen 3 32B), sistem panggilan suara interaktif real-time (*Live Voice Call*), studio generasi gambar AI (*AI Image Studio*), analisis visi dokumen multimodal, hingga integrasi aplikasi mobile native Android via **Capacitor 8**.
 
-Mengusung tema aksen kebangsaan **Merah Putih (Crimson Red & Crisp White Glow)** berpadu dengan estetika futuristik modern, **FYY-AI** memberikan pengalaman asisten cerdas yang sangat responsif, elegan, dan tanpa kompromi.
+Mengusung tema aksen kebangsaan **Merah Putih (Crimson Red `#E11D48` & Crisp White Glow)** yang bersih dan elegan, **FYY-AI** memberikan pengalaman asisten cerdas yang sangat responsif, futuristik, dan tanpa kompromi.
 
 ---
 
@@ -40,7 +40,7 @@ Mengusung tema aksen kebangsaan **Merah Putih (Crimson Red & Crisp White Glow)**
 - [🎨 AI Image Studio & Prompt Enhancer](#-ai-image-studio--prompt-enhancer)
 - [🔐 Sistem Autentikasi, Keamanan & Guest Trial](#-sistem-autentikasi-keamanan--guest-trial)
 - [📱 Aplikasi Mobile & Android (Capacitor 8)](#-aplikasi-mobile--android-capacitor-8)
-- [🎨 Desain Sistem & Tema](#-desain-sistem--tema)
+- [🎨 Desain Sistem Merah Putih & Theme Styles](#-desain-sistem-merah-putih--theme-styles)
 - [🏛️ Arsitektur Sistem](#️-arsitektur-sistem)
 - [🗂️ Struktur Direktori Proyek](#️-struktur-direktori-proyek)
 - [🚀 Panduan Memulai (Quick Start)](#-panduan-memulai-quick-start)
@@ -57,13 +57,13 @@ Mengusung tema aksen kebangsaan **Merah Putih (Crimson Red & Crisp White Glow)**
 |---|---|
 | ⚡ **Inferensi Kilat (LPU)** | Streaming respons secepat kilat memanfaatkan Groq LPU engine berbasis Server-Sent Events (SSE). |
 | 🧠 **Multi-Model Selector** | Bebas beralih antar model AI tier-atas: **FYY-Llama 3.3**, **FYY-Llama 4 Scout**, **FYY-GPT-OSS 120B**, dan **FYY-Qwen 3 32B**. |
-| 🎙️ **Live Voice Modal (Call Mode)** | Fitur panggilan suara interaktif mirip manusia dengan visualisasi orb bercahaya real-time dan echo-cancellation cooldown. |
+| 🎙️ **Live Voice Modal (Call Mode)** | Fitur panggilan suara interaktif real-time dengan visualisasi **Orb Merah Putih** (Glow Putih untuk mendengar, Pulse Merah untuk berbicara). |
 | 🗣️ **Voice I/O & Text-to-Speech** | Dukungan input suara (Web Speech Recognition) dan output suara asisten cerdas dengan pengaturan kecepatan & jenis suara. |
 | 👁️ **Multimodal Vision & Dokumen** | Analisis gambar, tangkapan layar, grafik, dan lampiran dokumen secara instan. |
 | 🎨 **AI Image Studio** | Studio generasi gambar AI terintegrasi berbasis **FLUX.1-schnell**, **FLUX.1-dev**, dan **Stable Diffusion XL**. |
-| 🪄 **AI Prompt Enhancer** | Otomatisasi penerjemahan dan penyempurnaan prompt bahasa Indonesia/kasual ke prompt profesional berbahasa Inggris via Groq LLaMA. |
+| 🪄 **AI Prompt Enhancer** | Otomatisasi penerjemahan dan penyempurnaan prompt bahasa Indonesia ke prompt profesional berbahasa Inggris via Groq LLaMA. |
 | 🗂️ **Riwayat Percakapan Persisten** | Sinkronisasi riwayat chat lokal via `localStorage` dan cloud database berbasis **Supabase PostgreSQL**. |
-| 🌗 **Multi-Theme Engine** | Pilihan tema fleksibel: Dark, Light, Cyberpunk, Merah Putih, Glassmorphism, dan Neobrutalism. |
+| 🇮🇩 **Merah Putih Theme Styles** | Desain beraksen Merah Putih dengan pilihan style: **Basic**, **Glassmorphism**, dan **Neobrutalism** (didukung Dark & Light Mode). |
 | 🛡️ **Guest Trial & Clerk Security** | Mode Tamu (Guest Mode) dengan kuota 20 chat & 10 generate gambar, terproteksi Clerk Security Shield. |
 | 🔓 **Owner Mode (FyyXD Secret Mode)** | Persona rahasia khusus developer (RapXCode) yang dapat dibuka dengan kode `FYY3257`. |
 | 📱 **Native Android & PWA** | Kemasan APK Android native dengan Capacitor 8, splash screen, haptics, keyboard adaptif, dan PWA installable. |
@@ -118,9 +118,11 @@ Pengguna dapat memilih spesialisasi asisten melalui **Mode Selector**:
 
 FYY-AI menghadirkan pengalaman berbicara langsung dengan asisten AI tanpa perlu mengetik:
 
-- **Live Voice Modal**: Membuka sesi panggilan suara penuh dengan animasi bola energi bercahaya (*energy orb*):
-  - ⚪ **Listening State (Glow Putih)**: Menandakan AI sedang mendengarkan ucapan pengguna.
-  - 🔵 **Speaking/Idle State (Pulse Biru)**: Menandakan AI sedang berbicara atau menunggu jeda.
+- **Live Voice Modal**: Membuka sesi panggilan suara penuh dengan visualisasi orb energi bercahaya beraksen **Merah Putih**:
+  - ⚪ **Listening State (Glow Putih Murni `#FFFFFF`)**: Menandakan AI sedang mendengarkan ucapan pengguna.
+  - 🔴 **Speaking State (Pulse Merah Crimson `#E11D48`)**: Menandakan AI sedang berbicara menjawab pengguna.
+  - 🟡 **Thinking State (Glow Amber `#F59E0B`)**: Menandakan AI sedang memproses penalaran.
+  - 🔴 **Idle State (Glow Merah `#E11D48`)**: Menandakan sesi suara terhubung dan siap berinteraksi.
 - **Smart Conversational System**: Saat Live Voice aktif, instruksi sistem secara otomatis beralih menjadi jawaban ringkas, alami (1-3 kalimat), dan tanpa format markdown berat agar suara terdengar seperti panggilan telepon nyata.
 - **Echo Prevention Mechanism**: Dilengkapi dengan jeda pendinginan (*TTS Cooldown*) agar suara output AI tidak memicu mikrofon kembali.
 
@@ -134,7 +136,7 @@ Studio pembuatan gambar AI generasi mutakhir dengan model difusi HuggingFace:
   - `FLUX.1-schnell` — Generasi instan dengan detail tajam.
   - `FLUX.1-dev` — Generasi resolusi tinggi dengan kualitas fotorealistik profesional.
   - `Stable Diffusion XL Base 1.0` — Model klasik untuk ilustrasi artistik, anime, dan konsep seni.
-- **Groq AI Prompt Enhancer**: Pengguna dapat mengetikkan deskripsi dalam bahasa Indonesia sederhana (misal: *"kucing cyberpunk pakai kacamata neon"*). FYY-AI akan otomatis menerjemahkan dan mengembangkannya menjadi prompt difusi profesional berstandar industri secara instan sebelum dikirim ke mesin rendering.
+- **Groq AI Prompt Enhancer**: Pengguna dapat mengetikkan deskripsi dalam bahasa Indonesia sederhana (misal: *"pemandangan alam nusantara megah saat matahari terbit"*). FYY-AI akan otomatis menerjemahkan dan mengembangkannya menjadi prompt difusi profesional berstandar industri secara instan sebelum dikirim ke mesin rendering.
 - **Media Gallery**: Galeri gambar interaktif untuk mengunduh, melihat resolusi penuh, dan menyalin tautan gambar.
 
 ---
@@ -173,19 +175,20 @@ graph TD
 
 ---
 
-## 🎨 Desain Sistem & Tema
+## 🎨 Desain Sistem Merah Putih & Theme Styles
 
-Desain FYY-AI mengusung filosofi **Aesthetics & Performance**:
+Desain FYY-AI mengusung tema **Merah Putih Nasional Indonesia** yang elegan:
 
-- **National Merah Putih Glow Theme**:
-  - Warna primer: `Crimson Red (#E11D48 / #BE123C)`
-  - Warna sekunder: `Crisp White Glow (#FFFFFF / rgba(255,255,255,0.95))`
-  - Latar belakang: Deep Obsidian Dark (`#08080A` / `#060816`)
-- **Varian Tema Lengkap**:
-  - `dark` / `light` — Mode standar modern.
-  - `glass` — Efek Glassmorphism dengan blur backdrop dinamis.
-  - `neobrutalism` — Garis kontras tegas dengan bayangan pop-art.
-  - `cyberpunk`, `ocean`, `nature`, `retro`, `sunset`, `minimal`.
+- **Palet Warna Inti**:
+  - Warna Primer: `Crimson Red (#E11D48 / #BE123C)`
+  - Warna Sekunder: `Crisp White Glow (#FFFFFF / #F9FAFB)`
+  - Background Mode Gelap: Deep Obsidian (`#08080A`)
+  - Background Mode Terang: Crisp Neutral (`#FAFAFA`)
+
+- **3 Varian UI Style**:
+  1. `style-basic` — **Minimalist Merah Putih**: Tampilan antarmuka bersih, cepat, dan fokus pada teks dan fungsionalitas.
+  2. `style-glass` — **Glassmorphism Merah Putih**: Tampilan modern dengan efek kaca transparan, backdrop blur dinamis, dan bayangan lembut crimson.
+  3. `style-neobrutalism` — **Neobrutalism Merah Putih**: Tampilan tegas dengan border bergaris solid dan bayangan pop kontras.
 
 ---
 
@@ -248,7 +251,7 @@ fyy-ai/
 │   │   ├── chat-sidebar.tsx    # Sidebar riwayat chat & navigasi
 │   │   ├── file-upload.tsx     # Handler upload & preview lampiran
 │   │   ├── image-generator.tsx # Studio kreasi gambar AI
-│   │   ├── live-voice-modal.tsx# Modal panggilan suara real-time
+│   │   ├── live-voice-modal.tsx# Modal panggilan suara real-time (Merah Putih Orb)
 │   │   ├── media-gallery.tsx   # Galeri media gambar
 │   │   ├── message-list.tsx    # Render list gelembung pesan chat
 │   │   ├── model-selector.tsx  # Pemilih model AI
@@ -281,7 +284,7 @@ fyy-ai/
 │   └── utils.ts                # Classnames merge helper (cn)
 │
 ├── public/                     # Aset statis & logo FYY-AI
-├── styles/themes/              # File style tema tambahan (Glass, Neobrutalism, Basic)
+├── styles/themes/              # File style tema (Basic, Glass, Neobrutalism)
 ├── capacitor.config.ts         # Konfigurasi Capacitor Mobile
 ├── next.config.mjs             # Konfigurasi Next.js
 └── package.json                # Dependensi & script proyek
@@ -391,7 +394,7 @@ Endpoint pembuatan gambar AI dengan optimasi prompt otomatis via Groq.
 - **Request Body**:
   ```json
   {
-    "prompt": "Lukisan pemandangan candi Borobudur bernuansa cyberpunk neon",
+    "prompt": "Lukisan pemandangan candi Borobudur bernuansa megah",
     "model": "flux",
     "width": 1024,
     "height": 1024

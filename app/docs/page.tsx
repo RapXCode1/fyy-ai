@@ -252,12 +252,12 @@ export default function DocsPage() {
                   </div>
 
                   <div className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 space-y-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                      <div className="w-4 h-4 rounded-full bg-blue-400 animate-pulse" />
+                    <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse" />
                     </div>
-                    <h3 className="text-sm font-bold text-white">Blue Pulse (Speaking / Idle)</h3>
+                    <h3 className="text-sm font-bold text-white">Crimson Red Glow (Speaking)</h3>
                     <p className="text-xs text-gray-400 leading-relaxed">
-                      Ketika orb berdenyut biru lembut, AI sedang berbicara menjawab pertanyaanmu menggunakan Text-to-Speech synthesis yang jernih.
+                      Ketika orb berdenyut merah crimson terang, AI sedang berbicara menjawab pertanyaanmu menggunakan Text-to-Speech synthesis yang jernih.
                     </p>
                   </div>
                 </div>
