@@ -49,8 +49,8 @@ export function WelcomeAnimation({ title, subtitle, delay = 0 }: WelcomeAnimatio
         {showAnimation && (
           <div className="flex justify-center space-x-4 mb-8">
             <div className="animate-bounce-in" style={{ animationDelay: '0.2s' }}>
-              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse-glow">
-                <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse-glow overflow-hidden">
+                <img src="/logo-nobg.png" alt="Logo" className="w-16 h-16 object-contain" />
               </div>
             </div>
             <div className="animate-bounce-in" style={{ animationDelay: '0.4s' }}>
@@ -174,8 +174,8 @@ export function HeroWelcomeAnimation() {
       <div className="text-center space-y-8 animate-scale-in max-w-md px-4">
         {/* Logo animation */}
         <div className="animate-bounce-in">
-          <div className="w-24 h-24 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-red-500/50 overflow-hidden">
-            <img src="/logo.png" alt="FYY-AI Logo" className="w-20 h-20 object-contain animate-pulse" />
+          <div className="w-28 h-28 flex items-center justify-center mx-auto">
+            <img src="/logo-nobg.png" alt="FYY-AI Logo" className="w-28 h-28 object-contain drop-shadow-[0_0_24px_rgba(225,29,72,0.6)] animate-pulse" />
           </div>
         </div>
 

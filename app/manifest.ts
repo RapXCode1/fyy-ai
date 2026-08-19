@@ -7,13 +7,14 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Advanced AI Intelligence Platform by RapXCode',
     start_url: '/chat',
     display: 'standalone',
-    background_color: '#000000',
-    theme_color: '#0ea5e9',
+    background_color: '#08080A',
+    theme_color: '#E11D48',
     icons: [
       {
-        src: '/logo.png',
+        src: '/logo-nobg.png',
         sizes: 'any',
         type: 'image/png',
+        purpose: 'any',
       },
       {
         src: '/icon-192.png',

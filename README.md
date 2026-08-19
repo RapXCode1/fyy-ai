@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/logo.png" alt="FYY-AI Logo" width="140" />
+  <img src="./public/logo-nobg.png" alt="FYY-AI Logo" width="140" />
 </p>
 
 <h1 align="center">FYY-AI — Multimodal AI Platform</h1>

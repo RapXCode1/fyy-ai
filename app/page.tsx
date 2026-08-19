@@ -140,8 +140,8 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg fyf-gradient-bg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">F</span>
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+              <img src="/logo-nobg.png" alt="FYY-AI" className="w-full h-full object-contain" />
             </div>
             <span className="text-base font-semibold tracking-tight">FYY-AI</span>
           </Link>

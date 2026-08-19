@@ -956,8 +956,8 @@ export default function ChatPage() {
             </button>
             
             <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-              <div className="w-7 h-7 rounded-lg fyf-gradient-bg flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-black">F</span>
+              <div className="w-7 h-7 flex-shrink-0">
+                <img src="/logo-nobg.png" alt="FYY-AI" className="w-full h-full object-contain" />
               </div>
               <div className="flex flex-col min-w-0">
                 <h1 className="text-sm font-bold tracking-tight text-[var(--fyf-text)] leading-none">
@@ -1210,8 +1210,8 @@ export default function ChatPage() {
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12 max-w-lg mx-auto space-y-6">
               
               <div className="relative">
-                <div className="w-16 h-16 rounded-2xl fyf-gradient-bg flex items-center justify-center shadow-2xl">
-                  <span className="text-white text-2xl font-black">F</span>
+                <div className="w-20 h-20 flex items-center justify-center">
+                  <img src="/logo-nobg.png" alt="FYY-AI" className="w-20 h-20 object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.5)]" />
                 </div>
               </div>
               

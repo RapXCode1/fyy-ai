@@ -58,8 +58,8 @@ export default function ChatSidebar({
           <div className="p-4 flex flex-col gap-4 border-b border-[var(--fyf-border)]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg fyf-gradient-bg flex items-center justify-center">
-                  <span className="text-[var(--fyf-text)] text-xs font-black">F</span>
+                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+                  <img src="/logo-nobg.png" alt="FYY-AI" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-sm font-bold tracking-tight text-[var(--fyf-text)]">FYY-AI Workspace</span>
               </div>
