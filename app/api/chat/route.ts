@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
 import { globalSettings } from "@/lib/settings"
-import { formatBrandedError } from "@/lib/models"
+import { formatBrandedError, DEFAULT_MODEL_ID, FALLBACK_MODEL_ID } from "@/lib/models"
 
 export const runtime = 'edge'
 
@@ -73,18 +73,16 @@ export async function POST(req: Request) {
       m.attachments && m.attachments.some((a: any) => a.type.startsWith('image/'))
     )
 
-    // Force a vision model if images are present, otherwise Groq will error
-    let finalModel = model || "llama-3.3-70b-versatile"
+    // Force a vision-capable model if images are present
+    let finalModel = model || DEFAULT_MODEL_ID
     
-    // List of models that we know support vision in this environment
+    // Models that support vision on Groq
     const visionModels = [
-      "meta-llama/llama-4-scout-17b-16e-instruct",
-      "openai/gpt-oss-120b",
-      "qwen/qwen3-32b"
+      "llama-4-scout-17b-16e-instruct",
     ]
 
     if (hasImages && !visionModels.includes(finalModel)) {
-      finalModel = "meta-llama/llama-4-scout-17b-16e-instruct" 
+      finalModel = "llama-4-scout-17b-16e-instruct"
     }
 
     // Process messages to handle multi-modal content (images)
@@ -153,11 +151,11 @@ export async function POST(req: Request) {
     } catch (err: any) {
       console.warn(`Primary model ${finalModel} error (${err?.status || err?.code}): ${err?.message}, initiating smart fallback...`);
       isFallback = true;
-      usedModel = "llama-3.1-8b-instant";
+      usedModel = FALLBACK_MODEL_ID;
       
       try {
         response = await groq.chat.completions.create({
-          model: "llama-3.1-8b-instant",
+          model: FALLBACK_MODEL_ID,
           messages: [
             systemMessage, 
             { 

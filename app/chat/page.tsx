@@ -18,7 +18,7 @@ import LiveVoiceModal from "@/components/chat/live-voice-modal"
 import { useUser, useSession, useAuth } from "@clerk/nextjs"
 import { createClerkSupabaseClient, getClerkSupabaseToken, isSupabaseConfigured } from "@/lib/supabase"
 import { HeroWelcomeAnimation } from "@/components/animations/welcome-animation"
-import { formatBrandedError, OFFICIAL_MODELS } from "@/lib/models"
+import { formatBrandedError, OFFICIAL_MODELS, DEFAULT_MODEL_ID } from "@/lib/models"
 
 interface Message {
   id: string
@@ -83,7 +83,7 @@ export default function ChatPage() {
   }, [])
   const [isLoading, setIsLoading] = useState(false)
   const [isReceiving, setIsReceiving] = useState(false)
-  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile")
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID)
   const [selectedMode, setSelectedMode] = useState("general")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showModelSelector, setShowModelSelector] = useState(false)
