@@ -23,22 +23,21 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const [showSubtitles, setShowSubtitles] = useState(true)
   const [errorMsg, setErrorMsg] = useState("")
 
-  // References
+  // Stable references
   const isMounted = useRef(false)
   const isAiBusy = useRef(false)
   const isRecording = useRef(false)
-  const isUserSpeaking = useRef(false)
-  const speechFrameCount = useRef(0)
-  const ambientFloor = useRef(12)
-  const isMutedRef = useRef(isMuted)
-
-  useEffect(() => {
-    isMutedRef.current = isMuted
-  }, [isMuted])
-
+  const isUserSpeakingRef = useRef(false)
+  const speechHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const watchdogTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const animFrameId = useRef<number | null>(null)
+
+  const ambientFloor = useRef(10)
+  const isMutedRef = useRef(isMuted)
+  useEffect(() => {
+    isMutedRef.current = isMuted
+  }, [isMuted])
 
   const mediaStream = useRef<MediaStream | null>(null)
   const audioCtx = useRef<AudioContext | null>(null)
@@ -52,11 +51,19 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const liveAvgVolume = useRef<number>(0)
   const morphPhaseRef = useRef<number>(0)
 
-  // ── Helper: Clear Timers ──────────────────────────────────────────────────
-  const clearTimers = () => {
+  // Color interpolation for buttery-smooth non-glitching transitions
+  const currentColor = useRef<{ r: number; g: number; b: number; a: number }>({ r: 255, g: 255, b: 255, a: 0.9 })
+  const currentScale = useRef<number>(1.0)
+
+  // ── Helper: Clear All Timers ──────────────────────────────────────────────
+  const clearAllTimers = () => {
     if (silenceTimer.current) {
       clearTimeout(silenceTimer.current)
       silenceTimer.current = null
+    }
+    if (speechHoldTimer.current) {
+      clearTimeout(speechHoldTimer.current)
+      speechHoldTimer.current = null
     }
     if (watchdogTimer.current) {
       clearTimeout(watchdogTimer.current)
@@ -211,7 +218,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
   // ── 3. Stop Active Recording Session ──────────────────────────────────────
   const stopRecordingSession = useCallback(() => {
-    clearTimers()
+    clearAllTimers()
     isRecording.current = false
 
     if (recorder.current && recorder.current.state === "recording") {
@@ -225,16 +232,15 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const processCapturedSpeech = useCallback(async () => {
     if (!isMounted.current) return
 
-    const wasSpeaking = isUserSpeaking.current
-    isUserSpeaking.current = false
-    speechFrameCount.current = 0
+    const wasSpeaking = isUserSpeakingRef.current
+    isUserSpeakingRef.current = false
 
     const chunks = audioChunks.current.slice()
     audioChunks.current = []
 
     const totalSize = chunks.reduce((acc, chunk) => acc + chunk.size, 0)
-    // Ignore near-silent data (< 4000 bytes)
-    if (!wasSpeaking || totalSize < 4000) {
+    // Ignore near-silent data (< 1800 bytes)
+    if (!wasSpeaking || totalSize < 1800) {
       if (isMounted.current && !isAiBusy.current) {
         startListeningSession()
       }
@@ -261,14 +267,14 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (!isMounted.current) return
 
       if (!recognizedText) {
-        // Hallucination filtered or unrecognized -> resume listening
+        // Hallucination filtered or silent -> resume listening smoothly
         isAiBusy.current = false
         setPhase("listening")
         startListeningSession()
         return
       }
 
-      // Display what the USER actually said in the bubble
+      // Display what the USER actually said
       setActiveTranscript({ speaker: "user", text: recognizedText })
 
       const aiReply = await onSendMessage(recognizedText)
@@ -301,10 +307,9 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (!mediaStream.current) return
 
     isRecording.current = true
-    isUserSpeaking.current = false
-    speechFrameCount.current = 0
+    isUserSpeakingRef.current = false
     audioChunks.current = []
-    clearTimers()
+    clearAllTimers()
     setPhase("listening")
 
     try {
@@ -411,29 +416,36 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         if (sampleCount < 40) {
           sampleSum += avg
           sampleCount++
-          ambientFloor.current = Math.max(10, sampleSum / sampleCount)
+          ambientFloor.current = Math.max(8, sampleSum / sampleCount)
         }
 
-        const speechThreshold = Math.max(18, ambientFloor.current + 12)
+        const speechThreshold = Math.max(16, ambientFloor.current + 10)
 
-        // VAD Trigger (Only active while listening and unmuted)
+        // Robust VAD with Debouncing to prevent flickering
         if (!isAiBusy.current && isRecording.current && !isMutedRef.current) {
           if (avg > speechThreshold) {
-            speechFrameCount.current += 1
-            if (speechFrameCount.current >= 3) {
-              isUserSpeaking.current = true
-              clearTimers()
+            isUserSpeakingRef.current = true
+
+            // Clear silence timeout
+            if (silenceTimer.current) {
+              clearTimeout(silenceTimer.current)
+              silenceTimer.current = null
             }
-          } else {
-            speechFrameCount.current = 0
-            if (isUserSpeaking.current && !silenceTimer.current) {
-              // 1.3s silence after speaking -> auto-send
+
+            // Hold speech state for at least 500ms after brief syllable drops
+            if (speechHoldTimer.current) clearTimeout(speechHoldTimer.current)
+            speechHoldTimer.current = setTimeout(() => {
+              // Speech hold ended, wait for natural sentence conclusion
+            }, 500)
+          } else if (isUserSpeakingRef.current) {
+            // User stopped talking: wait 1.1s of quiet before finalizing turn
+            if (!silenceTimer.current) {
               silenceTimer.current = setTimeout(() => {
                 silenceTimer.current = null
                 if (!isAiBusy.current && isRecording.current && isMounted.current) {
                   stopRecordingSession()
                 }
-              }, 1300)
+              }, 1100)
             }
           }
         }
@@ -462,7 +474,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }, [startListeningSession, stopRecordingSession])
 
-  // ── 7. Ultra-Smooth Bezier Spline Fluid Orb ──────────────────────────────
+  // ── 7. Ultra-Smooth Bezier Spline Fluid Orb with Color Lerping ───────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -484,40 +496,42 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       morphPhaseRef.current += 0.03
 
-      let colorPrimary = "rgba(244, 63, 94, 0.95)"
-      let colorSecondary = "rgba(225, 29, 72, 0.75)"
-      let colorGlow = "rgba(244, 63, 94, 0.4)"
-      let dynamicScale = 1.0
-      const totalPoints = 32
+      // Target color setup based on state
+      let targetColor = { r: 255, g: 255, b: 255, a: 0.95 }
+      let targetScale = 1.0
 
       if (phase === "listening") {
-        if (isUserSpeaking.current) {
-          colorPrimary = "rgba(251, 113, 133, 0.98)"
-          colorSecondary = "rgba(244, 63, 94, 0.85)"
-          colorGlow = "rgba(244, 63, 94, 0.55)"
-          dynamicScale = 1.0 + Math.min(0.32, volume / 90)
+        if (isUserSpeakingRef.current) {
+          targetColor = { r: 244, g: 63, b: 94, a: 0.98 } // Soft Rose
+          targetScale = 1.0 + Math.min(0.3, volume / 85)
         } else {
-          colorPrimary = "rgba(255, 255, 255, 0.95)"
-          colorSecondary = "rgba(229, 231, 235, 0.75)"
-          colorGlow = "rgba(255, 255, 255, 0.25)"
-          dynamicScale = 1.0 + Math.sin(morphPhaseRef.current * 1.5) * 0.035
+          targetColor = { r: 255, g: 255, b: 255, a: 0.92 } // Pure Soft White
+          targetScale = 1.0 + Math.sin(morphPhaseRef.current * 1.5) * 0.035
         }
       } else if (phase === "thinking") {
-        colorPrimary = "rgba(245, 158, 11, 0.98)"
-        colorSecondary = "rgba(217, 119, 6, 0.8)"
-        colorGlow = "rgba(245, 158, 11, 0.5)"
-        dynamicScale = 1.06 + Math.sin(morphPhaseRef.current * 3.5) * 0.05
+        targetColor = { r: 245, g: 158, b: 11, a: 0.98 } // Amber Glow
+        targetScale = 1.06 + Math.sin(morphPhaseRef.current * 3.5) * 0.045
       } else if (phase === "speaking") {
-        colorPrimary = "rgba(244, 63, 94, 1.0)"
-        colorSecondary = "rgba(236, 72, 153, 0.9)"
-        colorGlow = "rgba(244, 63, 94, 0.7)"
-        dynamicScale = 1.12 + Math.min(0.28, volume / 110)
+        targetColor = { r: 244, g: 63, b: 94, a: 1.0 } // Crimson Rose Radiant
+        targetScale = 1.12 + Math.min(0.28, volume / 100)
       } else if (phase === "error") {
-        colorPrimary = "rgba(156, 163, 175, 0.7)"
-        colorSecondary = "rgba(107, 114, 128, 0.5)"
-        colorGlow = "rgba(107, 114, 128, 0.2)"
-        dynamicScale = 0.9
+        targetColor = { r: 156, g: 163, b: 175, a: 0.7 }
+        targetScale = 0.9
       }
+
+      // Smooth Lerping (Linear Interpolation) to eliminate color glitching
+      const lerpFactor = 0.12
+      currentColor.current.r += (targetColor.r - currentColor.current.r) * lerpFactor
+      currentColor.current.g += (targetColor.g - currentColor.current.g) * lerpFactor
+      currentColor.current.b += (targetColor.b - currentColor.current.b) * lerpFactor
+      currentColor.current.a += (targetColor.a - currentColor.current.a) * lerpFactor
+      currentScale.current += (targetScale - currentScale.current) * lerpFactor
+
+      const { r, g, b, a } = currentColor.current
+      const currentScaleVal = currentScale.current
+
+      const colorPrimary = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`
+      const colorGlow = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a * 0.45})`
 
       // Outer Radiant Halo Glow
       const glowGrad = ctx.createRadialGradient(
@@ -526,18 +540,19 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         baseRadius * 0.4,
         centerX,
         centerY,
-        baseRadius * dynamicScale * 2.2
+        baseRadius * currentScaleVal * 2.2
       )
       glowGrad.addColorStop(0, colorGlow)
-      glowGrad.addColorStop(0.6, colorGlow.replace(/[\d.]+\)$/, "0.15)"))
+      glowGrad.addColorStop(0.6, `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.12)`)
       glowGrad.addColorStop(1, "rgba(0, 0, 0, 0)")
 
       ctx.fillStyle = glowGrad
       ctx.beginPath()
-      ctx.arc(centerX, centerY, baseRadius * dynamicScale * 2.2, 0, Math.PI * 2)
+      ctx.arc(centerX, centerY, baseRadius * currentScaleVal * 2.2, 0, Math.PI * 2)
       ctx.fill()
 
       // Calculate Smooth Spline Points
+      const totalPoints = 32
       const points: { x: number; y: number }[] = []
       const freqData = liveAudioData.current
 
@@ -547,17 +562,17 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
         if (freqData && freqData.length > 0) {
           const sampleIdx = Math.floor((i / totalPoints) * (freqData.length * 0.6))
-          freqOffset = (freqData[sampleIdx] / 255) * (baseRadius * 0.2)
+          freqOffset = (freqData[sampleIdx] / 255) * (baseRadius * 0.18)
         }
 
         const harmonic =
           Math.sin(angle * 3 + morphPhaseRef.current * 2) * (baseRadius * 0.05) +
           Math.cos(angle * 4 - morphPhaseRef.current * 1.8) * (baseRadius * 0.035)
 
-        const r = baseRadius * dynamicScale + harmonic + freqOffset
+        const radius = baseRadius * currentScaleVal + harmonic + freqOffset
         points.push({
-          x: centerX + Math.cos(angle) * r,
-          y: centerY + Math.sin(angle) * r,
+          x: centerX + Math.cos(angle) * radius,
+          y: centerY + Math.sin(angle) * radius,
         })
       }
 
@@ -581,11 +596,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         baseRadius * 0.1,
         centerX,
         centerY,
-        baseRadius * dynamicScale
+        baseRadius * currentScaleVal
       )
       liquidGrad.addColorStop(0, colorPrimary)
-      liquidGrad.addColorStop(0.85, colorSecondary)
-      liquidGrad.addColorStop(1, colorSecondary)
+      liquidGrad.addColorStop(1, `rgba(${Math.round(r * 0.85)}, ${Math.round(g * 0.85)}, ${Math.round(b * 0.85)}, ${a})`)
 
       ctx.fillStyle = liquidGrad
       ctx.shadowColor = colorPrimary
@@ -647,7 +661,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       isRecording.current = false
 
       if (animFrameId.current) cancelAnimationFrame(animFrameId.current)
-      clearTimers()
+      clearAllTimers()
 
       if (currentAudioSource.current) {
         try {
@@ -705,7 +719,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       interruptAI()
       setPhase("listening")
       startListeningSession()
-    } else if (phase === "listening" && isUserSpeaking.current) {
+    } else if (phase === "listening" && isUserSpeakingRef.current) {
       stopRecordingSession()
     }
   }
@@ -788,7 +802,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
                 ? "text-amber-400 animate-pulse font-bold"
                 : phase === "speaking"
                 ? "text-rose-400 font-bold"
-                : isUserSpeaking.current
+                : isUserSpeakingRef.current
                 ? "text-rose-400 font-bold animate-pulse"
                 : "text-gray-300"
             }`}
@@ -801,7 +815,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
               ? "FYY-AI sedang berpikir..."
               : phase === "speaking"
               ? "FYY-AI sedang berbicara..."
-              : isUserSpeaking.current
+              : isUserSpeakingRef.current
               ? "Mendengarkan ucapanmu..."
               : "Mendengarkan · Bicara bebas (ID/EN)..."}
           </p>
@@ -821,6 +835,13 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
               >
                 <RefreshCw size={12} /> Hubungkan Ulang
               </button>
+            </div>
+          ) : phase === "thinking" ? (
+            <div className="w-full px-4 py-2.5 rounded-2xl bg-amber-950/30 border border-amber-500/20 backdrop-blur-md animate-fade-in">
+              <p className="text-[10px] text-amber-400 uppercase tracking-widest font-black mb-0.5">Memproses</p>
+              <p className="text-gray-300 text-xs sm:text-sm font-medium italic animate-pulse">
+                FYY-AI sedang merespon...
+              </p>
             </div>
           ) : activeTranscript.speaker === "user" ? (
             <div className="w-full px-4 py-2.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 backdrop-blur-md animate-fade-in">
