@@ -30,6 +30,71 @@ const TEXT_FALLBACK_MODELS = [
   "qwen/qwen3.6-27b",
 ]
 
+/**
+ * Creates a stream that strips <think>...</think> tags in real-time
+ */
+function createCleanStream(asyncIterable: AsyncIterable<any>, usedModel: string, isFallback: boolean) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder()
+      let insideThink = false
+      let buf = ""
+
+      try {
+        for await (const chunk of asyncIterable) {
+          const raw = chunk.choices[0]?.delta?.content || ""
+          if (!raw) continue
+          buf += raw
+
+          while (buf.length > 0) {
+            if (insideThink) {
+              const end = buf.indexOf("</think>")
+              if (end !== -1) {
+                insideThink = false
+                buf = buf.substring(end + 8).replace(/^\s+/, "")
+              } else {
+                buf = ""
+                break
+              }
+            } else {
+              const start = buf.indexOf("<think>")
+              if (start !== -1) {
+                const before = buf.substring(0, start)
+                if (before) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: before })}\n\n`))
+                insideThink = true
+                buf = buf.substring(start + 7)
+              } else {
+                if (/^<t?h?i?n?k?$/.test(buf.slice(-6))) break
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: buf })}\n\n`))
+                buf = ""
+              }
+            }
+          }
+        }
+
+        if (buf && !insideThink) {
+          const clean = buf.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\/?think>/gi, "")
+          if (clean) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: clean })}\n\n`))
+        }
+      } catch (err) {
+        controller.error(err)
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Model-Used": usedModel,
+      "X-Model-Fallback": isFallback ? "true" : "false",
+    },
+  })
+}
+
 export async function POST(req: Request) {
   let requestedModel = DEFAULT_MODEL_ID
   try {
@@ -56,12 +121,12 @@ export async function POST(req: Request) {
     )
 
     // =========================================================================
-    // 1. GROQ MULTIMODAL VISION PIPELINE (Qwen 3.6 Multimodal Vision on Groq)
+    // 1. GROQ MULTIMODAL VISION PIPELINE (Qwen 3.6 Multimodal Vision)
     // =========================================================================
     if (imageAttachment) {
       const userPromptText = (typeof latestMessage.content === "string" && latestMessage.content.trim())
         ? latestMessage.content.trim()
-        : "Tolong periksa, baca seluruh teks/OCR, dan jelaskan detail isi foto/gambar ini secara lengkap dan akurat."
+        : "Tolong jelaskan apa saja yang ada di dalam foto ini secara detail dan jelas."
 
       let lastVisionError = ""
 
@@ -72,7 +137,7 @@ export async function POST(req: Request) {
             messages: [
               {
                 role: "system",
-                content: "Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. Analisis gambar yang dikirimkan pengguna dengan teliti, baca seluruh teks, OCR, nama, angka, atau kode yang terlihat di foto, dan berikan jawaban yang lengkap, jelas, dan akurat dalam bahasa Indonesia.",
+                content: "Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. Tugasmu adalah menganalisis gambar dan menjawab pertanyaan pengguna secara langsung, ramah, rapi, dan natural dalam bahasa Indonesia. DILARANG MENAMPILKAN PROSES PIKIRAN BATIN ATAU TAG <think>. Langsung berikan penjelasan yang nyaman dan mudah dibaca oleh pengguna.",
               },
               {
                 role: "user",
@@ -91,36 +156,11 @@ export async function POST(req: Request) {
               },
             ],
             stream: true,
-            temperature: 0.3,
+            temperature: 0.25,
             max_tokens: 2048,
           })
 
-          const stream = new ReadableStream({
-            async start(controller) {
-              const encoder = new TextEncoder()
-              try {
-                for await (const chunk of visionResponse) {
-                  const text = chunk.choices[0]?.delta?.content || ""
-                  if (text) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`))
-                  }
-                }
-              } catch (e) {
-                controller.error(e)
-              } finally {
-                controller.close()
-              }
-            },
-          })
-
-          return new Response(stream, {
-            headers: {
-              "Content-Type": "text/event-stream",
-              "Cache-Control": "no-cache",
-              Connection: "keep-alive",
-              "X-Model-Used": `FYY-Vision (${visionModel})`,
-            },
-          })
+          return createCleanStream(visionResponse, `FYY-Vision (${visionModel})`, false)
         } catch (groqVisionErr: any) {
           lastVisionError = groqVisionErr?.message || String(groqVisionErr)
           console.warn(`[FYY Vision] Groq ${visionModel} error:`, lastVisionError)
@@ -222,65 +262,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: friendlyMsg }, { status: 503 })
     }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder()
-        let insideThink = false
-        let buf = ""
-
-        try {
-          for await (const chunk of response) {
-            const raw = chunk.choices[0]?.delta?.content || ""
-            if (!raw) continue
-            buf += raw
-
-            while (buf.length > 0) {
-              if (insideThink) {
-                const end = buf.indexOf("</think>")
-                if (end !== -1) {
-                  insideThink = false
-                  buf = buf.substring(end + 8).replace(/^\s+/, "")
-                } else {
-                  buf = ""
-                  break
-                }
-              } else {
-                const start = buf.indexOf("<think>")
-                if (start !== -1) {
-                  const before = buf.substring(0, start)
-                  if (before) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: before })}\n\n`))
-                  insideThink = true
-                  buf = buf.substring(start + 7)
-                } else {
-                  if (/^<t?h?i?n?k?$/.test(buf.slice(-6))) break
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: buf })}\n\n`))
-                  buf = ""
-                }
-              }
-            }
-          }
-
-          if (buf && !insideThink) {
-            const clean = buf.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\/?think>/gi, "")
-            if (clean) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: clean })}\n\n`))
-          }
-        } catch (err) {
-          controller.error(err)
-        } finally {
-          controller.close()
-        }
-      },
-    })
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Model-Used": usedModel,
-        "X-Model-Fallback": isFallback ? "true" : "false",
-      },
-    })
+    return createCleanStream(response, usedModel, isFallback)
   } catch (error: any) {
     const brandedError = formatBrandedError(
       error?.message || "Terjadi kesalahan tak terduga.",
