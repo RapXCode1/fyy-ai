@@ -13,14 +13,16 @@ interface UseVoiceInputOptions {
   onTranscript?: (transcript: string) => void
   onError?: (error: string) => void
   onEnd?: () => void
+  continuous?: boolean
 }
 
-export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOptions = {}) {
+export function useVoiceInput({ onTranscript, onError, onEnd, continuous = false }: UseVoiceInputOptions = {}) {
   const [isRecording, setIsRecording] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
   const [permissionState, setPermissionState] = useState<"granted" | "denied" | "prompt" | "unknown">("unknown")
   const recognitionRef = useRef<any>(null)
   const callbacksRef = useRef({ onTranscript, onError, onEnd })
+  const silenceTimerRef = useRef<any>(null)
 
   useEffect(() => {
     callbacksRef.current = { onTranscript, onError, onEnd }
@@ -39,7 +41,6 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
         return true
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // Stop stream immediately after permission is granted
       stream.getTracks().forEach((track) => track.stop())
       setPermissionState("granted")
       return true
@@ -55,14 +56,29 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
     }
   }, [])
 
+  const stopRecording = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch {
+        try { recognitionRef.current.abort() } catch {}
+      }
+      recognitionRef.current = null
+    }
+    setIsRecording(false)
+  }, [])
+
   const startRecording = useCallback(async () => {
     if (isRecording) return
 
-    // 1. Prime / Request microphone access
     const granted = await requestMicrophonePermission()
     if (!granted && permissionState === "denied") return
 
-    // 2. Instantiate fresh SpeechRecognition for Mobile Web/PWA
     const SpeechRecognitionClass =
       typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null
 
@@ -72,12 +88,10 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
     }
 
     try {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch {}
-      }
+      stopRecording()
 
       const recognition = new SpeechRecognitionClass()
-      recognition.continuous = true
+      recognition.continuous = continuous
       recognition.interimResults = true
       recognition.lang = "id-ID"
 
@@ -90,24 +104,40 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
         for (let i = 0; i < event.results.length; i++) {
           fullTranscript += event.results[i][0].transcript
         }
+
         if (fullTranscript.trim()) {
           callbacksRef.current.onTranscript?.(fullTranscript)
+
+          // Reset silence timer (auto-stop after 2 seconds of silence in standard mode)
+          if (!continuous) {
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
+            silenceTimerRef.current = setTimeout(() => {
+              stopRecording()
+              callbacksRef.current.onEnd?.()
+            }, 2200)
+          }
         }
       }
 
       recognition.onerror = (event: any) => {
-        if (event.error === "no-speech") return
-        if (event.error === "aborted") return
+        if (event.error === "no-speech") {
+          stopRecording()
+          return
+        }
+        if (event.error === "aborted") {
+          setIsRecording(false)
+          return
+        }
 
         let errorMsg = "Pengenalan suara terganggu."
         if (event.error === "not-allowed") {
-          errorMsg = "Izin mikrofon ditolak. Mohon izinkan akses mic."
+          errorMsg = "Izin mic ditolak. Izinkan akses mikrofon."
           setPermissionState("denied")
         } else if (event.error === "network") {
-          errorMsg = "Kendala jaringan saat mengenali suara."
+          errorMsg = "Kendala jaringan pada voice recognition."
         }
         callbacksRef.current.onError?.(errorMsg)
-        setIsRecording(false)
+        stopRecording()
       }
 
       recognition.onend = () => {
@@ -117,30 +147,17 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
 
       recognitionRef.current = recognition
       recognition.start()
-    } catch (err) {
+    } catch {
       setIsRecording(false)
-      callbacksRef.current.onError?.("Gagal memulai rekaman suara.")
+      callbacksRef.current.onError?.("Gagal mengaktifkan perekam suara.")
     }
-  }, [isRecording, permissionState, requestMicrophonePermission])
-
-  const stopRecording = useCallback(() => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop()
-      } catch {
-        try { recognitionRef.current.abort() } catch {}
-      }
-    }
-    setIsRecording(false)
-  }, [])
+  }, [isRecording, permissionState, continuous, requestMicrophonePermission, stopRecording])
 
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch {}
-      }
+      stopRecording()
     }
-  }, [])
+  }, [stopRecording])
 
   return {
     isRecording,
@@ -153,7 +170,7 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
 }
 
 /**
- * Robust Text-to-Speech (TTS) hook with mobile audio unlock & Indonesian voice selection
+ * Enhanced Text-to-Speech (TTS) hook with mobile audio unlock & Indonesian voice engine
  */
 export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => void }) {
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -163,7 +180,6 @@ export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => 
     optionsRef.current = options
   }, [options])
 
-  // Pre-warm audio engine on mount & voice change
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const loadVoices = () => {
@@ -207,7 +223,7 @@ export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => 
       const voices = window.speechSynthesis.getVoices()
       const indonesianVoice =
         voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
-        voices.find((v) => v.name.toLowerCase().includes("indonesia"))
+        voices.find((v) => v.name.toLowerCase().includes("indonesia") || v.name.toLowerCase().includes("andika"))
 
       if (indonesianVoice) {
         utterance.voice = indonesianVoice

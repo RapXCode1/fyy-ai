@@ -825,15 +825,12 @@ export default function ChatPage() {
   const handleVoiceEnd = () => {
     if (isLiveMode) {
       setTimeout(() => {
-        const textArea = document.querySelector('textarea') as HTMLTextAreaElement
-        const finalInput = textArea ? textArea.value : ""
-
-        if (finalInput.trim()) {
-          handleSendMessage(finalInput)
+        if (input.trim()) {
+          handleSendMessage(input)
         } else {
-          setLiveModeTrigger(prev => prev + 1)
+          setLiveModeTrigger((prev) => prev + 1)
         }
-      }, 500)
+      }, 300)
     }
   }
 

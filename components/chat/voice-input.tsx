@@ -39,12 +39,20 @@ export default function VoiceInput({
       onEnd: () => {
         onRecordingEnd?.()
       },
+      continuous: isLiveMode,
     })
 
   // Notify parent of recording state changes
   useEffect(() => {
     onRecordingStateChange?.(isRecording)
   }, [isRecording, onRecordingStateChange])
+
+  // Stop recording immediately if input is disabled or message is being sent
+  useEffect(() => {
+    if (disabled && isRecording) {
+      stopRecording()
+    }
+  }, [disabled, isRecording, stopRecording])
 
   // Listen for trigger to restart recording in Live Mode
   useEffect(() => {
@@ -83,6 +91,16 @@ export default function VoiceInput({
   const handleStartLiveCall = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+
+    // Unlock audio context on user gesture
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        const unlock = new SpeechSynthesisUtterance("")
+        unlock.volume = 0
+        window.speechSynthesis.speak(unlock)
+      } catch {}
+    }
+
     onLiveModeToggle?.(true)
   }
 
@@ -100,20 +118,7 @@ export default function VoiceInput({
   }
 
   if (isLiveMode) {
-    return (
-      <div className="flex items-center gap-2 animate-fade-in">
-        <button
-          onClick={() => {
-            onLiveModeToggle?.(false)
-            stopRecording()
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20 transition-all animate-pulse"
-        >
-          <Square size={12} />
-          <span>End Live Call</span>
-        </button>
-      </div>
-    )
+    return null
   }
 
   return (
@@ -124,7 +129,7 @@ export default function VoiceInput({
         variant="ghost"
         onClick={handleStartLiveCall}
         disabled={disabled}
-        title="Start Realtime Live Voice Call with FYY-AI"
+        title="Mulai Panggilan Suara Langsung (Live Voice Call)"
         className="h-9 w-9 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center micro-btn"
       >
         <PhoneCall className="h-4 w-4" />
@@ -141,7 +146,7 @@ export default function VoiceInput({
             ? "bg-red-600 text-white shadow-lg shadow-red-500/40 animate-pulse ring-2 ring-red-400"
             : "text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-[var(--fyf-border)]"
         }`}
-        title={isRecording ? "Tap to finish recording" : "Tap to speak (Voice Recording)"}
+        title={isRecording ? "Ketuk untuk selesai merekam" : "Ketuk untuk bicara (Rekam Suara)"}
       >
         {isRecording ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-4 w-4" />}
       </Button>
@@ -150,7 +155,7 @@ export default function VoiceInput({
       {isRecording && (
         <div className="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1 animate-fade-in pointer-events-none">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-          Listening...
+          Mendengarkan...
         </div>
       )}
 
