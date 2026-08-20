@@ -12,9 +12,12 @@ type CallPhase = "connecting" | "listening" | "thinking" | "speaking" | "error"
 
 export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceModalProps) {
   const [phase, setPhase] = useState<CallPhase>("connecting")
-  const [activeTranscript, setActiveTranscript] = useState<{ speaker: "user" | "ai" | "none"; text: string }>({
-    speaker: "none",
-    text: "Menghubungkan mikrofon...",
+  const [activeTranscript, setActiveTranscript] = useState<{
+    speaker: "user" | "ai" | "idle"
+    text: string
+  }>({
+    speaker: "idle",
+    text: "Mempersiapkan mikrofon...",
   })
   const [isMuted, setIsMuted] = useState(false)
   const [showSubtitles, setShowSubtitles] = useState(true)
@@ -61,7 +64,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }
 
-  // ── 1. Stop AI Audio & Interrupt Immediately (Barge-In) ───────────────────
+  // ── 1. Stop AI Audio & Interrupt (Barge-In) ───────────────────────────────
   const interruptAI = useCallback(() => {
     if (watchdogTimer.current) {
       clearTimeout(watchdogTimer.current)
@@ -82,7 +85,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     isAiBusy.current = false
   }, [])
 
-  // ── 2. Play AI Voice Response ─────────────────────────────────────────────
+  // ── 2. Play AI Voice Response (AudioContext / Direct Buffer) ──────────────
   const playAISpeech = useCallback(
     (text: string, onDone: () => void) => {
       if (!isMounted.current) {
@@ -230,8 +233,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     audioChunks.current = []
 
     const totalSize = chunks.reduce((acc, chunk) => acc + chunk.size, 0)
-    // Ignore near-silent data / background noise (< 4500 bytes)
-    if (!wasSpeaking || totalSize < 4500) {
+    // Ignore near-silent data (< 4000 bytes)
+    if (!wasSpeaking || totalSize < 4000) {
       if (isMounted.current && !isAiBusy.current) {
         startListeningSession()
       }
@@ -243,7 +246,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     isAiBusy.current = true
     setPhase("thinking")
-    setActiveTranscript({ speaker: "none", text: "FYY-AI sedang memproses..." })
 
     try {
       const formData = new FormData()
@@ -259,15 +261,14 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (!isMounted.current) return
 
       if (!recognizedText) {
-        // Hallucination filtered or silent -> resume listening
+        // Hallucination filtered or unrecognized -> resume listening
         isAiBusy.current = false
         setPhase("listening")
-        setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
         startListeningSession()
         return
       }
 
-      // Display user speech
+      // Display what the USER actually said in the bubble
       setActiveTranscript({ speaker: "user", text: recognizedText })
 
       const aiReply = await onSendMessage(recognizedText)
@@ -277,21 +278,18 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         playAISpeech(aiReply, () => {
           if (isMounted.current) {
             setPhase("listening")
-            setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
             startListeningSession()
           }
         })
       } else {
         isAiBusy.current = false
         setPhase("listening")
-        setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
         startListeningSession()
       }
     } catch {
       if (isMounted.current) {
         isAiBusy.current = false
         setPhase("listening")
-        setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
         startListeningSession()
       }
     }
@@ -342,7 +340,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const initializeAudioStream = useCallback(async () => {
     setPhase("connecting")
     setErrorMsg("")
-    setActiveTranscript({ speaker: "none", text: "Menghubungkan mikrofon..." })
+    setActiveTranscript({ speaker: "idle", text: "Menghubungkan mikrofon..." })
 
     try {
       const stream = (await Promise.race([
@@ -373,12 +371,12 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       const ctx = audioCtx.current!
       if (ctx.state === "suspended") await ctx.resume()
 
-      // Biquad High-Pass Filter: Cuts 85Hz rumble
+      // High-Pass Filter: Cuts 85Hz rumble/hum
       const highPass = ctx.createBiquadFilter()
       highPass.type = "highpass"
       highPass.frequency.value = 85
 
-      // Biquad Low-Pass Filter: Cuts 7500Hz hiss
+      // Low-Pass Filter: Cuts 7500Hz hiss
       const lowPass = ctx.createBiquadFilter()
       lowPass.type = "lowpass"
       lowPass.frequency.value = 7500
@@ -409,27 +407,22 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         const avg = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength
         liveAvgVolume.current = avg
 
-        // Dynamic ambient noise floor calibration during initial silence
+        // Dynamic ambient noise floor calibration
         if (sampleCount < 40) {
           sampleSum += avg
           sampleCount++
           ambientFloor.current = Math.max(10, sampleSum / sampleCount)
         }
 
-        // Strict Speech Threshold to ignore quiet ambient noise
         const speechThreshold = Math.max(18, ambientFloor.current + 12)
 
         // VAD Trigger (Only active while listening and unmuted)
         if (!isAiBusy.current && isRecording.current && !isMutedRef.current) {
           if (avg > speechThreshold) {
             speechFrameCount.current += 1
-            // Must sustain at least 3 frames (~120ms) to trigger speaking
             if (speechFrameCount.current >= 3) {
               isUserSpeaking.current = true
               clearTimers()
-              setActiveTranscript((prev) =>
-                prev.speaker === "user" ? prev : { speaker: "user", text: "Mendengarkan ucapanmu..." }
-              )
             }
           } else {
             speechFrameCount.current = 0
@@ -452,7 +445,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       setTimeout(() => {
         if (isMounted.current) {
-          setActiveTranscript({ speaker: "none", text: "Silakan bicara (ID/EN)..." })
+          setActiveTranscript({ speaker: "idle", text: "Silakan mulai berbicara..." })
           startListeningSession()
         }
       }, 350)
@@ -711,7 +704,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (phase === "speaking") {
       interruptAI()
       setPhase("listening")
-      setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
       startListeningSession()
     } else if (phase === "listening" && isUserSpeaking.current) {
       stopRecordingSession()
@@ -792,8 +784,12 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
                 ? "text-yellow-400"
                 : isMuted
                 ? "text-gray-400"
+                : phase === "thinking"
+                ? "text-amber-400 animate-pulse font-bold"
                 : phase === "speaking"
                 ? "text-rose-400 font-bold"
+                : isUserSpeaking.current
+                ? "text-rose-400 font-bold animate-pulse"
                 : "text-gray-300"
             }`}
           >
@@ -805,12 +801,14 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
               ? "FYY-AI sedang berpikir..."
               : phase === "speaking"
               ? "FYY-AI sedang berbicara..."
+              : isUserSpeaking.current
+              ? "Mendengarkan ucapanmu..."
               : "Mendengarkan · Bicara bebas (ID/EN)..."}
           </p>
         </div>
       </main>
 
-      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE ── */}
+      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE (Alternates User ↔ AI) ── */}
       {showSubtitles && (
         <section className="w-full max-w-md px-6 mb-3 min-h-[68px] flex flex-col items-center justify-center text-center z-20">
           {phase === "error" ? (
@@ -825,14 +823,14 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
               </button>
             </div>
           ) : activeTranscript.speaker === "user" ? (
-            <div className="w-full px-4 py-2.5 rounded-2xl bg-rose-950/30 border border-rose-500/20 backdrop-blur-md animate-fade-in">
+            <div className="w-full px-4 py-2.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 backdrop-blur-md animate-fade-in">
               <p className="text-[10px] text-rose-400 uppercase tracking-widest font-black mb-0.5">Kamu</p>
-              <p className="text-gray-200 text-xs sm:text-sm font-medium italic leading-relaxed line-clamp-2">
+              <p className="text-gray-100 text-xs sm:text-sm font-medium italic leading-relaxed line-clamp-3">
                 "{activeTranscript.text}"
               </p>
             </div>
           ) : activeTranscript.speaker === "ai" ? (
-            <div className="w-full px-4 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md animate-fade-in shadow-xl">
+            <div className="w-full px-4 py-2.5 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md animate-fade-in shadow-xl">
               <p className="text-[10px] text-rose-400 uppercase tracking-widest font-black mb-0.5 flex items-center justify-center gap-1">
                 <Volume2 size={11} className="animate-pulse" /> FYY-AI
               </p>
