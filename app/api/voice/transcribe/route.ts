@@ -2,6 +2,35 @@ import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
+// Known Whisper hallucinations on silence / ambient noise
+const WHISPER_HALLUCINATIONS = new Set([
+  "terima kasih.",
+  "terima kasih",
+  "terima kasih sudah menonton",
+  "terima kasih sudah menonton.",
+  "terima kasih telah menonton",
+  "terima kasih telah menonton.",
+  "terima kasih sudah menyaksikan",
+  "terima kasih sudah menyaksikan.",
+  "terima kasih banyak",
+  "terima kasih banyak.",
+  "thank you.",
+  "thank you",
+  "thank you for watching.",
+  "thank you for watching",
+  "thank you very much.",
+  "thank you very much",
+  "subtitles by",
+  "subtitles by the amara.org community",
+  "amara.org",
+  "you",
+  "...",
+  "bye.",
+  "bye",
+  "sampai jumpa.",
+  "sampai jumpa",
+])
+
 export async function POST(req: Request) {
   try {
     const rawApiKey = process.env.GROQ_API_KEY || req.headers.get("x-groq-key") || ""
@@ -17,11 +46,9 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const audioFile = formData.get("file") as Blob | null
 
-    if (!audioFile || audioFile.size === 0) {
-      return NextResponse.json(
-        { error: "No audio file provided or file is empty." },
-        { status: 400 }
-      )
+    if (!audioFile || audioFile.size < 2000) {
+      // Audio is too small to contain actual speech
+      return NextResponse.json({ success: true, text: "" })
     }
 
     // Prepare multipart form data for Groq Whisper
@@ -50,7 +77,22 @@ export async function POST(req: Request) {
     }
 
     const data = await groqResponse.json()
-    const text = (data.text || "").trim()
+    let text = (data.text || "").trim()
+
+    // Filter out Whisper silence hallucinations
+    const normalized = text.toLowerCase().replace(/[^\w\s]/g, "").trim()
+    if (
+      WHISPER_HALLUCINATIONS.has(text.toLowerCase()) ||
+      WHISPER_HALLUCINATIONS.has(normalized) ||
+      normalized === "terima kasih" ||
+      normalized === "thank you" ||
+      normalized === "terima kasih banyak" ||
+      normalized === "subtitles by amara org" ||
+      normalized === "amara org" ||
+      text.length <= 1
+    ) {
+      text = ""
+    }
 
     return NextResponse.json({
       success: true,

@@ -166,26 +166,7 @@ export default function ChatPage() {
   const [isVoiceInputBlocked, setIsVoiceInputBlocked] = useState(false)
   const voiceBlockedTimeoutRef = useRef<number | null>(null)
 
-  const { speak, isSpeaking, stop: stopSpeech } = useSpeechOutput({
-    onStart: () => {
-      if (isLiveModeRef.current) {
-        setIsVoiceInputBlocked(true)
-      }
-    },
-    onEnd: () => {
-      if (isLiveModeRef.current) {
-        if (voiceBlockedTimeoutRef.current) {
-          window.clearTimeout(voiceBlockedTimeoutRef.current)
-        }
-
-        setIsVoiceInputBlocked(true)
-        voiceBlockedTimeoutRef.current = window.setTimeout(() => {
-          setIsVoiceInputBlocked(false)
-          setLiveModeTrigger(prev => prev + 1)
-        }, 600)
-      }
-    }
-  })
+  const { speak, isSpeaking, stop: stopSpeech } = useSpeechOutput()
 
   useEffect(() => {
     return () => {
@@ -779,10 +760,6 @@ export default function ChatPage() {
         )
       }
 
-      if (isLiveModeRef.current) {
-        speak(accumulatedContent)
-      }
-
       return accumulatedContent
     } catch (error) {
       console.error("Error sending message:", error)
@@ -825,15 +802,7 @@ export default function ChatPage() {
   }
 
   const handleVoiceEnd = () => {
-    if (isLiveMode) {
-      setTimeout(() => {
-        if (input.trim()) {
-          handleSendMessage(input)
-        } else {
-          setLiveModeTrigger((prev) => prev + 1)
-        }
-      }, 300)
-    }
+    // Normal single-shot voice input end
   }
 
   const handleEditMessage = (messageId: string, newContent: string) => {

@@ -19,13 +19,13 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const isAiBusy = useRef(false)
   const isRecording = useRef(false)
   const isUserSpeaking = useRef(false)
+  const speechFrameCount = useRef(0)
 
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null)
   const animFrame = useRef<number | null>(null)
 
   const mediaStream = useRef<MediaStream | null>(null)
-  // AudioContext is stored in ref — created SYNCHRONOUSLY in useEffect
   const audioCtx = useRef<AudioContext | null>(null)
   const analyser = useRef<AnalyserNode | null>(null)
   const recorder = useRef<MediaRecorder | null>(null)
@@ -40,9 +40,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (watchdog.current) { clearTimeout(watchdog.current); watchdog.current = null }
   }
 
-  // ── 1. Play AI Speech via pre-unlocked AudioContext ───────────────────────
-  // AudioContext was created synchronously in useEffect (user gesture scope),
-  // so it stays permanently unlocked — no autoplay issues on any mobile browser.
+  // ── 1. Play AI Speech via AudioContext ────────────────────────────────────
   const playAI = useCallback((text: string, onDone: () => void) => {
     if (!isMounted.current) { onDone(); return }
 
@@ -70,8 +68,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (isMounted.current) onDone()
     }
 
-    // Max 15 seconds per speech turn
-    watchdog.current = setTimeout(finish, Math.min(15000, Math.max(3500, clean.length * 80)))
+    // Safety watchdog: max 18s per turn
+    watchdog.current = setTimeout(finish, Math.min(18000, Math.max(3500, clean.length * 80)))
 
     setCallState("speaking")
 
@@ -80,12 +78,14 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     const doPlay = async () => {
       try {
-        // iOS suspends AudioContext on page blur — always resume
         if (ctx.state === "suspended") await ctx.resume()
         if (ctx.state === "closed") { finish(); return }
 
         const res = await fetch(`/api/tts?text=${encodeURIComponent(clean.substring(0, 240))}`)
-        if (!res.ok || !isMounted.current) { finish(); return }
+        if (!res.ok || !isMounted.current) {
+          fallbackTTS(clean, finish)
+          return
+        }
 
         const arrayBuf = await res.arrayBuffer()
         if (!isMounted.current) { finish(); return }
@@ -127,11 +127,11 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     } catch { onDone() }
   }
 
-  // ── 2. Stop current recording session (idempotent) ────────────────────────
+  // ── 2. Stop current recording session ─────────────────────────────────────
   const stopRecording = useCallback(() => {
     clearSilenceTimer()
-    isUserSpeaking.current = false
     isRecording.current = false
+
     if (recorder.current && recorder.current.state === "recording") {
       try { recorder.current.stop() } catch {}
     }
@@ -141,11 +141,16 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const sendAudioToSTT = useCallback(async () => {
     if (!isMounted.current) return
 
+    const wasSpeaking = isUserSpeaking.current
+    isUserSpeaking.current = false
+    speechFrameCount.current = 0
+
     const chunks = audioChunks.current.slice()
     audioChunks.current = []
 
     const totalSize = chunks.reduce((s, c) => s + c.size, 0)
-    if (totalSize < 1500) {
+    // If user didn't speak or data is too tiny (< 3000 bytes ~0.3s audio), ignore
+    if (!wasSpeaking || totalSize < 3000) {
       if (isMounted.current && !isAiBusy.current) startListening()
       return
     }
@@ -167,6 +172,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (!isMounted.current) return
 
       if (!text) {
+        // Ignored or hallucination filtered
         isAiBusy.current = false
         setCallState("listening")
         startListening()
@@ -203,6 +209,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     isRecording.current = true
     isUserSpeaking.current = false
+    speechFrameCount.current = 0
     audioChunks.current = []
     clearSilenceTimer()
     setCallState("listening")
@@ -233,13 +240,11 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   }, [sendAudioToSTT])
 
   // ── 5. Init microphone stream + VAD loop ──────────────────────────────────
-  // NOTE: AudioContext is already created synchronously in useEffect below.
   const initStream = useCallback(async () => {
     setCallState("connecting")
     setErrorMsg("")
 
     try {
-      // getUserMedia with 6-second timeout to prevent infinite hang
       const stream = await Promise.race([
         navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -251,7 +256,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       if (!isMounted.current) { stream.getTracks().forEach((t) => t.stop()); return }
 
-      // Stop old stream if re-initializing
       if (mediaStream.current) {
         mediaStream.current.getTracks().forEach((t) => t.stop())
       }
@@ -269,7 +273,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       const buf = new Uint8Array(an.frequencyBinCount)
 
-      // Cancel old animation frame loop if re-initializing
       if (animFrame.current) cancelAnimationFrame(animFrame.current)
 
       const tick = () => {
@@ -279,16 +282,24 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         setLiveVolume(avg)
 
         if (!isAiBusy.current && isRecording.current) {
-          if (avg > 12) {
-            isUserSpeaking.current = true
-            clearSilenceTimer()
-          } else if (isUserSpeaking.current && !silenceTimer.current) {
-            silenceTimer.current = setTimeout(() => {
-              silenceTimer.current = null
-              if (!isAiBusy.current && isRecording.current && isMounted.current) {
-                stopRecording()
-              }
-            }, 1200)
+          // Speech detection: volume > 15 for 2+ consecutive frames
+          if (avg > 15) {
+            speechFrameCount.current += 1
+            if (speechFrameCount.current >= 2) {
+              isUserSpeaking.current = true
+              clearSilenceTimer()
+            }
+          } else {
+            speechFrameCount.current = 0
+            if (isUserSpeaking.current && !silenceTimer.current) {
+              // 1.3s of silence after speech -> trigger send
+              silenceTimer.current = setTimeout(() => {
+                silenceTimer.current = null
+                if (!isAiBusy.current && isRecording.current && isMounted.current) {
+                  stopRecording()
+                }
+              }, 1300)
+            }
           }
         }
 
@@ -313,25 +324,21 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }, [startListening, stopRecording])
 
-  // ── 6. Lifecycle — AudioContext created SYNCHRONOUSLY here ───────────────
+  // ── 6. Lifecycle ──────────────────────────────────────────────────────────
   useEffect(() => {
     isMounted.current = true
     isAiBusy.current = false
     isRecording.current = false
 
-    // Create AudioContext SYNCHRONOUSLY inside useEffect (user-gesture scope).
-    // This is the key: the context is born from the user's tap on the phone button,
-    // so it remains permanently unlocked for audio playback on iOS and Android.
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
     const ctx = new AudioCtx()
     audioCtx.current = ctx
 
-    // Unlock SpeechSynthesis voice list
     if ("speechSynthesis" in window) {
       try {
         const u = new SpeechSynthesisUtterance(""); u.volume = 0
         window.speechSynthesis.speak(u)
-        window.speechSynthesis.getVoices() // trigger voice load
+        window.speechSynthesis.getVoices()
       } catch {}
     }
 
@@ -388,7 +395,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       isAiBusy.current = false
       setCallState("listening")
       startListening()
-    } else if (callState === "listening" && isUserSpeaking.current) {
+    } else if (callState === "listening") {
+      isUserSpeaking.current = true
       stopRecording()
     }
   }
