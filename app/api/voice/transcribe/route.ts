@@ -3,7 +3,9 @@ import { NextResponse } from "next/server"
 export const runtime = "nodejs"
 
 // Known Whisper hallucinations & short echo artifacts on silence / ambient noise
+// These appear when Whisper picks up speaker echo or background room noise
 const WHISPER_HALLUCINATIONS = new Set([
+  // Indonesian
   "terima kasih.",
   "terima kasih",
   "terima kasih sudah menonton",
@@ -14,6 +16,12 @@ const WHISPER_HALLUCINATIONS = new Set([
   "terima kasih sudah menyaksikan.",
   "terima kasih banyak",
   "terima kasih banyak.",
+  "sampai jumpa.",
+  "sampai jumpa",
+  "pemrograman",
+  "tanya jawab",
+  "bantuan ai",
+  // English
   "thank you.",
   "thank you",
   "thank you for watching.",
@@ -23,17 +31,25 @@ const WHISPER_HALLUCINATIONS = new Set([
   "subtitles by",
   "subtitles by the amara.org community",
   "amara.org",
+  "goodbye",
+  "goodbye.",
+  // Russian hallucinations (speaker echo picked up by mic)
+  "продолжение следует",
+  "продолжение следует...",
+  "привет",
+  "привет!",
+  "чем могу помочь",
+  "чем могу помочь?",
+  "привет! чем могу помочь?",
+  "спасибо",
+  "спасибо.",
+  "хорошо",
+  "до свидания",
+  // Short noise artifacts
   "you",
   "...",
   "bye.",
   "bye",
-  "sampai jumpa.",
-  "sampai jumpa",
-  "goodbye",
-  "goodbye.",
-  "pemrograman",
-  "tanya jawab",
-  "bantuan ai",
   "so",
   "so.",
   "ah",
@@ -44,6 +60,30 @@ const WHISPER_HALLUCINATIONS = new Set([
   "uh",
   "s",
 ])
+
+// Also block any output that is ENTIRELY non-ASCII (likely hallucinated foreign lang)
+function isLikelyHallucination(text: string): boolean {
+  const normalized = text.toLowerCase().replace(/[^\w\s]/g, "").trim()
+
+  // Block exact matches
+  if (WHISPER_HALLUCINATIONS.has(text.toLowerCase())) return true
+  if (WHISPER_HALLUCINATIONS.has(normalized)) return true
+
+  // Block texts that contain known Russian hallucination substrings
+  if (normalized.includes("продолжение")) return true
+  if (normalized.includes("следует")) return true
+  if (normalized.includes("subtitles by")) return true
+  if (normalized.includes("terima kasih sudah menonton")) return true
+  if (normalized.includes("thank you for watching")) return true
+
+  // Block texts where >60% of characters are Cyrillic (Russian/hallucinated)
+  const cyrillicCount = (text.match(/[\u0400-\u04FF]/g) || []).length
+  if (cyrillicCount > 0 && cyrillicCount / text.replace(/\s/g, "").length > 0.4) {
+    return true
+  }
+
+  return false
+}
 
 export async function POST(req: Request) {
   try {
@@ -71,6 +111,8 @@ export async function POST(req: Request) {
     groqFormData.append("model", "whisper-large-v3-turbo")
     groqFormData.append("temperature", "0.0")
     groqFormData.append("response_format", "json")
+    // Lock language to Indonesian to prevent hallucinated Russian/Chinese/etc
+    groqFormData.append("language", "id")
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
@@ -95,26 +137,15 @@ export async function POST(req: Request) {
     // Clean common subtitle/noise tags
     text = text.replace(/\[.*?\]|\(.*?\)/g, "").trim()
 
-    // Filter out Whisper silence hallucinations and short echo artifacts
-    const normalized = text.toLowerCase().replace(/[^\w\s]/g, "").trim()
-    if (
-      !text ||
-      text.length <= 2 ||
-      WHISPER_HALLUCINATIONS.has(text.toLowerCase()) ||
-      WHISPER_HALLUCINATIONS.has(normalized) ||
-      normalized === "terima kasih" ||
-      normalized === "thank you" ||
-      normalized === "terima kasih banyak" ||
-      normalized === "subtitles by amara org" ||
-      normalized === "amara org" ||
-      normalized === "you" ||
-      normalized === "so" ||
-      normalized === "ah" ||
-      normalized === "eh" ||
-      normalized.includes("terima kasih sudah menonton") ||
-      normalized.includes("subtitles by")
-    ) {
-      text = ""
+    // Filter too short
+    if (!text || text.length <= 2) {
+      return NextResponse.json({ success: true, text: "" })
+    }
+
+    // Filter hallucinations (including Cyrillic / Russian echo outputs)
+    if (isLikelyHallucination(text)) {
+      console.warn("Whisper hallucination filtered:", JSON.stringify(text))
+      return NextResponse.json({ success: true, text: "" })
     }
 
     return NextResponse.json({
