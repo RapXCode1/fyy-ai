@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import ThemeStyleProvider from "@/components/theme-style-provider"
 import ClientOnlyProviders from "@/components/client-only-providers"
@@ -68,6 +69,7 @@ export default function RootLayout({
             <ClientOnlyProviders />
             {children}
             <Analytics />
+            <SpeedInsights />
           </ThemeProvider>
         </body>
       </html>
