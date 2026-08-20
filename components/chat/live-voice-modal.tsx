@@ -26,7 +26,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const isRecording = useRef(false)
   const isUserSpeaking = useRef(false)
   const speechFrameCount = useRef(0)
-  const ambientFloor = useRef(10)
+  const ambientFloor = useRef(12)
   const isMutedRef = useRef(isMuted)
 
   useEffect(() => {
@@ -117,7 +117,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         if (isMounted.current) onDone()
       }
 
-      // Max 22 seconds per speech turn
       watchdogTimer.current = setTimeout(
         finish,
         Math.min(22000, Math.max(3500, cleanText.length * 85))
@@ -188,7 +187,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       window.speechSynthesis.cancel()
       window.speechSynthesis.resume()
       const utterance = new SpeechSynthesisUtterance(text.substring(0, 220))
-      uttLangCheck(utterance)
+      utterance.lang = "id-ID"
       utterance.rate = 1.05
       utterance.volume = 1.0
 
@@ -205,10 +204,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     } catch {
       onDone()
     }
-  }
-
-  const uttLangCheck = (utt: SpeechSynthesisUtterance) => {
-    utt.lang = "id-ID"
   }
 
   // ── 3. Stop Active Recording Session ──────────────────────────────────────
@@ -235,8 +230,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     audioChunks.current = []
 
     const totalSize = chunks.reduce((acc, chunk) => acc + chunk.size, 0)
-    // Ignore near-silent data / noise clicks
-    if (!wasSpeaking || totalSize < 2800) {
+    // Ignore near-silent data / background noise (< 4500 bytes)
+    if (!wasSpeaking || totalSize < 4500) {
       if (isMounted.current && !isAiBusy.current) {
         startListeningSession()
       }
@@ -248,7 +243,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     isAiBusy.current = true
     setPhase("thinking")
-    setActiveTranscript({ speaker: "none", text: "FYY-AI sedang berpikir..." })
+    setActiveTranscript({ speaker: "none", text: "FYY-AI sedang memproses..." })
 
     try {
       const formData = new FormData()
@@ -378,15 +373,15 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       const ctx = audioCtx.current!
       if (ctx.state === "suspended") await ctx.resume()
 
-      // Biquad High-Pass Filter: Cuts 80Hz rumble
+      // Biquad High-Pass Filter: Cuts 85Hz rumble
       const highPass = ctx.createBiquadFilter()
       highPass.type = "highpass"
-      highPass.frequency.value = 80
+      highPass.frequency.value = 85
 
-      // Biquad Low-Pass Filter: Cuts 8000Hz hiss
+      // Biquad Low-Pass Filter: Cuts 7500Hz hiss
       const lowPass = ctx.createBiquadFilter()
       lowPass.type = "lowpass"
-      lowPass.frequency.value = 8000
+      lowPass.frequency.value = 7500
 
       const an = ctx.createAnalyser()
       an.fftSize = 256
@@ -414,20 +409,22 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         const avg = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength
         liveAvgVolume.current = avg
 
-        // Dynamic ambient noise floor calibration
-        if (sampleCount < 30) {
+        // Dynamic ambient noise floor calibration during initial silence
+        if (sampleCount < 40) {
           sampleSum += avg
           sampleCount++
-          ambientFloor.current = Math.max(8, sampleSum / sampleCount)
+          ambientFloor.current = Math.max(10, sampleSum / sampleCount)
         }
 
-        const speechThreshold = Math.max(14, ambientFloor.current + 8)
+        // Strict Speech Threshold to ignore quiet ambient noise
+        const speechThreshold = Math.max(18, ambientFloor.current + 12)
 
-        // VAD Trigger
+        // VAD Trigger (Only active while listening and unmuted)
         if (!isAiBusy.current && isRecording.current && !isMutedRef.current) {
           if (avg > speechThreshold) {
             speechFrameCount.current += 1
-            if (speechFrameCount.current >= 2) {
+            // Must sustain at least 3 frames (~120ms) to trigger speaking
+            if (speechFrameCount.current >= 3) {
               isUserSpeaking.current = true
               clearTimers()
               setActiveTranscript((prev) =>
@@ -437,13 +434,13 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           } else {
             speechFrameCount.current = 0
             if (isUserSpeaking.current && !silenceTimer.current) {
-              // 1.2s silence after speaking -> auto-send
+              // 1.3s silence after speaking -> auto-send
               silenceTimer.current = setTimeout(() => {
                 silenceTimer.current = null
                 if (!isAiBusy.current && isRecording.current && isMounted.current) {
                   stopRecordingSession()
                 }
-              }, 1200)
+              }, 1300)
             }
           }
         }
@@ -472,7 +469,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }, [startListeningSession, stopRecordingSession])
 
-  // ── 7. Ultra-Smooth Bezier Spline Fluid Orb (ChatGPT / Gemini Live Style) ──
+  // ── 7. Ultra-Smooth Bezier Spline Fluid Orb ──────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -494,7 +491,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       morphPhaseRef.current += 0.03
 
-      // Colors & Styling depending on Phase
       let colorPrimary = "rgba(244, 63, 94, 0.95)"
       let colorSecondary = "rgba(225, 29, 72, 0.75)"
       let colorGlow = "rgba(244, 63, 94, 0.4)"
@@ -604,7 +600,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       ctx.fill()
       ctx.restore()
 
-      // Organic Specular Highlights
+      // Specular Highlights
       ctx.save()
       ctx.beginPath()
       ctx.ellipse(
@@ -729,9 +725,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         background: "radial-gradient(circle at 50% 40%, #151522 0%, #08080C 70%, #030305 100%)",
       }}
     >
-      {/* ── TOP HEADER BAR (Clean, Centered, Symmetrical) ── */}
+      {/* ── TOP HEADER BAR ── */}
       <header className="w-full max-w-xl flex items-center justify-between px-6 pt-6 sm:pt-8 z-20">
-        {/* Live Indicator Pill */}
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg">
           <div
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
@@ -750,7 +745,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           </span>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -791,7 +785,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           />
         </div>
 
-        {/* Phase Subtitle Hint */}
         <div className="text-center mt-3 space-y-1">
           <p
             className={`text-xs font-semibold tracking-wide transition-colors ${
@@ -817,7 +810,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         </div>
       </main>
 
-      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE (Alternates User ↔ AI) ── */}
+      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE ── */}
       {showSubtitles && (
         <section className="w-full max-w-md px-6 mb-3 min-h-[68px] flex flex-col items-center justify-center text-center z-20">
           {phase === "error" ? (
@@ -860,9 +853,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         </section>
       )}
 
-      {/* ── BOTTOM DOCK CONTROLS (ChatGPT / Gemini Live Style) ── */}
+      {/* ── BOTTOM DOCK CONTROLS ── */}
       <footer className="w-full max-w-sm flex items-center justify-center gap-6 pb-8 sm:pb-10 z-20">
-        {/* Mute Button */}
         <button
           type="button"
           onClick={toggleMute}
@@ -876,7 +868,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
 
-        {/* End Call Button */}
         <button
           type="button"
           onClick={onEndCall}

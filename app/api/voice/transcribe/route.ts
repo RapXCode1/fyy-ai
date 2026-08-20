@@ -31,6 +31,9 @@ const WHISPER_HALLUCINATIONS = new Set([
   "sampai jumpa",
   "goodbye",
   "goodbye.",
+  "pemrograman",
+  "tanya jawab",
+  "bantuan ai",
 ])
 
 export async function POST(req: Request) {
@@ -48,8 +51,8 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const audioFile = formData.get("file") as Blob | null
 
-    if (!audioFile || audioFile.size < 2500) {
-      // Audio is too small to contain actual speech
+    if (!audioFile || audioFile.size < 4000) {
+      // Audio is too small to contain meaningful speech
       return NextResponse.json({ success: true, text: "" })
     }
 
@@ -57,14 +60,9 @@ export async function POST(req: Request) {
     const groqFormData = new FormData()
     groqFormData.append("file", audioFile, "speech.webm")
     groqFormData.append("model", "whisper-large-v3-turbo")
-    // Note: Leaving language unset enables multilingual auto-detection (Indonesian, English, mixed/slang)
-    // Providing a contextual prompt anchors Whisper's vocabulary and eliminates hallucinations:
-    groqFormData.append(
-      "prompt",
-      "Percakapan suara interaktif FYY-AI dalam Bahasa Indonesia santai, gaul, formal, English, atau campuran. Coding, pemrograman, tanya jawab, bantuan AI."
-    )
     groqFormData.append("temperature", "0.0")
     groqFormData.append("response_format", "json")
+    // NOTE: DO NOT append a descriptive prompt here, as Whisper will repeat the prompt on low ambient noise!
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
@@ -86,7 +84,7 @@ export async function POST(req: Request) {
     const data = await groqResponse.json()
     let text = (data.text || "").trim()
 
-    // Clean common subtitle/noise tags like [Music], (Tawa), etc.
+    // Clean common subtitle/noise tags
     text = text.replace(/\[.*?\]|\(.*?\)/g, "").trim()
 
     // Filter out Whisper silence hallucinations
@@ -101,7 +99,9 @@ export async function POST(req: Request) {
       normalized === "terima kasih banyak" ||
       normalized === "subtitles by amara org" ||
       normalized === "amara org" ||
-      normalized === "you"
+      normalized === "you" ||
+      normalized.includes("terima kasih sudah menonton") ||
+      normalized.includes("subtitles by")
     ) {
       text = ""
     }
