@@ -54,7 +54,7 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Auto-close file upload picker when clicking outside the container
+  // Auto-close file upload picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (showFileUpload && containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -241,67 +241,77 @@ export default function ChatInput({
         </div>
       )}
 
-      {/* Main pill bar */}
-      <div className="flex gap-2 items-end">
-        <div className="flex-1 flex items-end px-3 py-2 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl transition-all duration-300 fyf-focus-ring">
+      {/* Main Unified Pill Input Bar */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl transition-all duration-300 fyf-focus-ring shadow-lg">
+        
+        {/* Left Tools: Attachment + Quick Suggestions */}
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShowFileUpload(!showFileUpload)}
+            title="Upload file / foto"
+            className="h-9 w-9 p-0 text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-white/5 rounded-xl transition-colors flex items-center justify-center micro-btn"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
           
-          {/* Inner Buttons */}
-          <div className="flex items-center gap-1 mr-2 flex-shrink-0 mb-0.5">
-            <Button
-              variant="ghost"
-              onClick={() => setShowFileUpload(!showFileUpload)}
-              title="Upload files"
-              className="h-8 w-8 p-0 text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-[var(--fyf-border)] rounded-lg transition-colors flex items-center justify-center micro-btn"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              onClick={onShowQuickPrompts}
-              title="Quick suggestions"
-              className="h-8 w-8 p-0 text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-[var(--fyf-border)] rounded-lg hidden sm:flex transition-colors items-center justify-center micro-btn"
-            >
-              <Zap className="h-4 w-4 text-amber-500" />
-            </Button>
-          </div>
-
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask FYY-AI anything..."
-            className="flex-1 bg-transparent outline-none resize-none text-sm text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] leading-relaxed min-h-[24px] py-1 selection-enabled"
-            rows={1}
-            disabled={isLoading}
-            maxLength={2000}
-          />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onShowQuickPrompts}
+            title="Saran Cepat"
+            className="h-9 w-9 p-0 text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-white/5 rounded-xl hidden sm:flex transition-colors items-center justify-center micro-btn"
+          >
+            <Zap className="h-4 w-4 text-amber-500" />
+          </Button>
         </div>
 
-        {/* Voice button */}
-        <VoiceInput 
-          onTranscript={handleVoiceTranscript} 
-          disabled={isLoading || isSpeaking || isVoiceInputBlocked} 
-          onLiveModeToggle={onLiveModeToggle} 
-          onRecordingEnd={onVoiceEnd}
-          onRecordingStateChange={onRecordingStateChange}
-          liveModeTrigger={liveModeTrigger}
-          isLiveMode={isLiveMode}
+        {/* Text Area */}
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Ask FYY-AI anything..."
+          className="flex-1 bg-transparent outline-none resize-none text-sm text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] leading-relaxed min-h-[24px] py-1 px-1 selection-enabled"
+          rows={1}
+          disabled={isLoading}
+          maxLength={2000}
         />
 
-        {/* Send Button */}
-        <Button
-          onClick={handleSend}
-          disabled={(!value.trim() && uploadedFiles.length === 0) || isLoading || isAnalyzing}
-          className="fyf-btn-primary h-[40px] w-[40px] rounded-xl flex-shrink-0 flex items-center justify-center micro-btn"
-        >
-          {isAnalyzing ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
+        {/* Right Tools: Live Call + Mic + Send Button (All strictly 36px, unified & symmetrical) */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <VoiceInput 
+            onTranscript={handleVoiceTranscript} 
+            disabled={isLoading || isSpeaking || isVoiceInputBlocked} 
+            onLiveModeToggle={onLiveModeToggle} 
+            onRecordingEnd={onVoiceEnd}
+            onRecordingStateChange={onRecordingStateChange}
+            liveModeTrigger={liveModeTrigger}
+            isLiveMode={isLiveMode}
+          />
+
+          {/* Send Button */}
+          <Button
+            type="button"
+            onClick={handleSend}
+            disabled={(!value.trim() && uploadedFiles.length === 0) || isLoading || isAnalyzing}
+            className={`h-9 w-9 p-0 rounded-xl flex items-center justify-center transition-all micro-btn ${
+              value.trim() || uploadedFiles.length > 0
+                ? "bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/30"
+                : "bg-white/5 text-gray-500 hover:text-gray-400 hover:bg-white/10"
+            }`}
+            title="Send Message"
+          >
+            {isAnalyzing ? (
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-current border-t-transparent" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
       </div>
 
     </div>
