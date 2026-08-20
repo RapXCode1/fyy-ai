@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { HfInference } from "@huggingface/inference"
 import {
   getSystemPrompt,
   getIdentityKnowledge,
@@ -18,6 +19,7 @@ export const maxDuration = 60
 const GROQ_VISION_MODELS = [
   "llama-3.2-11b-vision-preview",
   "llama-3.2-90b-vision-preview",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
 ]
 
 const TEXT_FALLBACK_MODELS = [
@@ -35,36 +37,26 @@ export async function POST(req: Request) {
     const rawApiKey = process.env.GROQ_API_KEY || req.headers.get("x-groq-key") || ""
     const apiKey = rawApiKey.trim()
     const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim()
-
-    if (!apiKey || apiKey.startsWith("gsk_placeholder") || apiKey.length < 15) {
-      if (!geminiApiKey) {
-        return NextResponse.json(
-          {
-            error: "🔑 API Key belum terpasang. Silakan tambahkan GROQ_API_KEY di Dashboard Vercel > Settings > Environment Variables.",
-          },
-          { status: 500 }
-        )
-      }
-    }
+    const hfToken = (process.env.HUGGINGFACE_API_TOKEN || "").trim()
 
     const { messages, model, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
     if (model) requestedModel = model
 
-    // Check if the latest user turn has an image attachment
+    // Check if the latest user message contains an image attachment
     const latestMessage = messages[messages.length - 1]
     const imageAttachment = latestMessage?.attachments?.find(
       (a: any) => a.type?.startsWith("image/") && a.url && a.url.startsWith("data:")
     )
 
     // =========================================================================
-    // 1. MULTIMODAL VISION PIPELINE (When User Sends an Image)
+    // 1. MULTIMODAL VISION PIPELINE (Triple-Engine: Gemini -> HF Qwen-VL -> Groq)
     // =========================================================================
     if (imageAttachment) {
       const userPromptText = (typeof latestMessage.content === "string" && latestMessage.content.trim())
         ? latestMessage.content.trim()
         : "Tolong periksa, baca seluruh teks/OCR, dan jelaskan detail isi foto/gambar ini secara lengkap dan akurat."
 
-      // --- Option A: Google Gemini Vision (Highest OCR & Multimodal Precision) ---
+      // --- Engine 1: Google Gemini Vision (Highest OCR & Accuracy) ---
       if (geminiApiKey) {
         try {
           const genAI = new GoogleGenerativeAI(geminiApiKey)
@@ -74,10 +66,10 @@ export async function POST(req: Request) {
           const base64Data = rawDataUrl.includes(",") ? rawDataUrl.split(",")[1] : rawDataUrl
           const mimeType = rawDataUrl.includes(";") ? rawDataUrl.split(";")[0].replace("data:", "") : "image/jpeg"
 
-          const systemInstructionText = "Kamu adalah FYY-AI, asisten AI cerdas. Analisis gambar berikut secara teliti, baca teks/OCR bila ada, dan jelaskan dengan bahasa Indonesia yang jelas, natural, dan akurat."
+          const systemPrompt = "Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. Analisis gambar berikut secara teliti, baca seluruh teks/OCR bila ada (nama, angka, kode, dokumen, label), dan jelaskan dengan bahasa Indonesia yang jelas, ramah, dan akurat."
 
           const geminiStream = await geminiModel.generateContentStream([
-            systemInstructionText,
+            systemPrompt,
             userPromptText,
             {
               inlineData: {
@@ -113,12 +105,59 @@ export async function POST(req: Request) {
               "X-Model-Used": "FYY-Vision-Gemini",
             },
           })
-        } catch (geminiErr) {
-          console.warn("Gemini vision fallback to Groq vision:", geminiErr)
+        } catch (geminiErr: any) {
+          console.warn("[FYY Vision] Gemini fallback to HF/Groq:", geminiErr?.message)
         }
       }
 
-      // --- Option B: Groq Multimodal Vision (Llama 3.2 Vision Cascade) ---
+      // --- Engine 2: Hugging Face Qwen2.5-VL Vision (Available via HUGGINGFACE_API_TOKEN) ---
+      if (hfToken) {
+        try {
+          const hf = new HfInference(hfToken)
+          const hfResponse = await hf.chatCompletion({
+            model: "Qwen/Qwen2.5-VL-7B-Instruct",
+            messages: [
+              {
+                role: "system",
+                content: "Kamu adalah FYY-AI, asisten visual cerdas oleh RapXCode. Jelaskan isi gambar dengan akurat dalam bahasa Indonesia, baca teks/OCR yang ada, dan jawab pertanyaan pengguna secara mendalam.",
+              },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: userPromptText },
+                  { type: "image_url", image_url: { url: imageAttachment.url } },
+                ],
+              },
+            ],
+            max_tokens: 1500,
+            temperature: 0.3,
+          })
+
+          const reply = hfResponse.choices[0]?.message?.content
+          if (reply && reply.trim().length > 0) {
+            const stream = new ReadableStream({
+              start(controller) {
+                const encoder = new TextEncoder()
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: reply })}\n\n`))
+                controller.close()
+              },
+            })
+
+            return new Response(stream, {
+              headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                Connection: "keep-alive",
+                "X-Model-Used": "FYY-Vision-QwenVL",
+              },
+            })
+          }
+        } catch (hfVisionErr: any) {
+          console.warn("[FYY Vision] HF QwenVL fallback:", hfVisionErr?.message)
+        }
+      }
+
+      // --- Engine 3: Groq Llama 3.2 Vision Cascade ---
       if (apiKey && apiKey.length >= 15) {
         const groq = new Groq({ apiKey })
 
@@ -132,7 +171,7 @@ export async function POST(req: Request) {
                   content: [
                     {
                       type: "text",
-                      text: `[Instruksi: Kamu adalah FYY-AI. Jelaskan isi gambar ini dengan akurat, baca setiap teks/nama/angka yang ada di foto, dan jawab pertanyaan pengguna: "${userPromptText}"]`,
+                      text: `Kamu adalah FYY-AI oleh RapXCode. Tolong periksa dan baca isi gambar ini dengan detail, jawab dalam bahasa Indonesia: ${userPromptText}`,
                     },
                     {
                       type: "image_url",
@@ -175,15 +214,15 @@ export async function POST(req: Request) {
               },
             })
           } catch (groqVisionErr: any) {
-            console.warn(`Groq Vision model ${visionModel} failed:`, groqVisionErr?.message)
+            console.warn(`[FYY Vision] Groq ${visionModel} failed:`, groqVisionErr?.message)
           }
         }
       }
 
-      // If both vision options fail, inform user politely instead of hallucinating from filename
+      // If all vision engines fail, return informative message
       return NextResponse.json(
         {
-          error: "⚠️ Maaf, sistem Vision AI sedang mengalami antrean pemrosesan visual. Silakan coba kirim ulang foto dalam beberapa saat.",
+          error: "⚠️ Fitur Vision AI memerlukan konfigurasi token. Silakan tambahkan `GEMINI_API_KEY` (gratis dari Google AI Studio) atau `HUGGINGFACE_API_TOKEN` di Dashboard Vercel > Settings > Environment Variables.",
         },
         { status: 503 }
       )
@@ -192,6 +231,15 @@ export async function POST(req: Request) {
     // =========================================================================
     // 2. STANDARD TEXT CHAT PIPELINE
     // =========================================================================
+    if (!apiKey || apiKey.startsWith("gsk_placeholder") || apiKey.length < 15) {
+      return NextResponse.json(
+        {
+          error: "🔑 API Key belum terpasang. Silakan tambahkan GROQ_API_KEY di Dashboard Vercel > Settings > Environment Variables.",
+        },
+        { status: 500 }
+      )
+    }
+
     const groq = new Groq({ apiKey })
 
     const isOwnerMode =
