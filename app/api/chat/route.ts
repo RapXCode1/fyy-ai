@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import Groq from "groq-sdk"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import {
   getSystemPrompt,
   getIdentityKnowledge,
@@ -14,7 +15,7 @@ import { formatBrandedError, DEFAULT_MODEL_ID } from "@/lib/models"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-const VISION_MODELS = [
+const GROQ_VISION_MODELS = [
   "llama-3.2-11b-vision-preview",
   "llama-3.2-90b-vision-preview",
 ]
@@ -33,19 +34,165 @@ export async function POST(req: Request) {
   try {
     const rawApiKey = process.env.GROQ_API_KEY || req.headers.get("x-groq-key") || ""
     const apiKey = rawApiKey.trim()
+    const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim()
 
     if (!apiKey || apiKey.startsWith("gsk_placeholder") || apiKey.length < 15) {
+      if (!geminiApiKey) {
+        return NextResponse.json(
+          {
+            error: "🔑 API Key belum terpasang. Silakan tambahkan GROQ_API_KEY di Dashboard Vercel > Settings > Environment Variables.",
+          },
+          { status: 500 }
+        )
+      }
+    }
+
+    const { messages, model, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
+    if (model) requestedModel = model
+
+    // Check if the latest user turn has an image attachment
+    const latestMessage = messages[messages.length - 1]
+    const imageAttachment = latestMessage?.attachments?.find(
+      (a: any) => a.type?.startsWith("image/") && a.url && a.url.startsWith("data:")
+    )
+
+    // =========================================================================
+    // 1. MULTIMODAL VISION PIPELINE (When User Sends an Image)
+    // =========================================================================
+    if (imageAttachment) {
+      const userPromptText = (typeof latestMessage.content === "string" && latestMessage.content.trim())
+        ? latestMessage.content.trim()
+        : "Tolong periksa, baca seluruh teks/OCR, dan jelaskan detail isi foto/gambar ini secara lengkap dan akurat."
+
+      // --- Option A: Google Gemini Vision (Highest OCR & Multimodal Precision) ---
+      if (geminiApiKey) {
+        try {
+          const genAI = new GoogleGenerativeAI(geminiApiKey)
+          const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+
+          const rawDataUrl = imageAttachment.url as string
+          const base64Data = rawDataUrl.includes(",") ? rawDataUrl.split(",")[1] : rawDataUrl
+          const mimeType = rawDataUrl.includes(";") ? rawDataUrl.split(";")[0].replace("data:", "") : "image/jpeg"
+
+          const systemInstructionText = "Kamu adalah FYY-AI, asisten AI cerdas. Analisis gambar berikut secara teliti, baca teks/OCR bila ada, dan jelaskan dengan bahasa Indonesia yang jelas, natural, dan akurat."
+
+          const geminiStream = await geminiModel.generateContentStream([
+            systemInstructionText,
+            userPromptText,
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: mimeType,
+              },
+            },
+          ])
+
+          const stream = new ReadableStream({
+            async start(controller) {
+              const encoder = new TextEncoder()
+              try {
+                for await (const chunk of geminiStream.stream) {
+                  const text = chunk.text()
+                  if (text) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`))
+                  }
+                }
+              } catch (e) {
+                controller.error(e)
+              } finally {
+                controller.close()
+              }
+            },
+          })
+
+          return new Response(stream, {
+            headers: {
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache",
+              Connection: "keep-alive",
+              "X-Model-Used": "FYY-Vision-Gemini",
+            },
+          })
+        } catch (geminiErr) {
+          console.warn("Gemini vision fallback to Groq vision:", geminiErr)
+        }
+      }
+
+      // --- Option B: Groq Multimodal Vision (Llama 3.2 Vision Cascade) ---
+      if (apiKey && apiKey.length >= 15) {
+        const groq = new Groq({ apiKey })
+
+        for (const visionModel of GROQ_VISION_MODELS) {
+          try {
+            const visionResponse = await groq.chat.completions.create({
+              model: visionModel,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: `[Instruksi: Kamu adalah FYY-AI. Jelaskan isi gambar ini dengan akurat, baca setiap teks/nama/angka yang ada di foto, dan jawab pertanyaan pengguna: "${userPromptText}"]`,
+                    },
+                    {
+                      type: "image_url",
+                      image_url: {
+                        url: imageAttachment.url,
+                      },
+                    },
+                  ],
+                },
+              ],
+              stream: true,
+              temperature: 0.3,
+              max_tokens: 2048,
+            })
+
+            const stream = new ReadableStream({
+              async start(controller) {
+                const encoder = new TextEncoder()
+                try {
+                  for await (const chunk of visionResponse) {
+                    const text = chunk.choices[0]?.delta?.content || ""
+                    if (text) {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`))
+                    }
+                  }
+                } catch (e) {
+                  controller.error(e)
+                } finally {
+                  controller.close()
+                }
+              },
+            })
+
+            return new Response(stream, {
+              headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                Connection: "keep-alive",
+                "X-Model-Used": visionModel,
+              },
+            })
+          } catch (groqVisionErr: any) {
+            console.warn(`Groq Vision model ${visionModel} failed:`, groqVisionErr?.message)
+          }
+        }
+      }
+
+      // If both vision options fail, inform user politely instead of hallucinating from filename
       return NextResponse.json(
         {
-          error: "🔑 API Key belum terpasang. Silakan tambahkan GROQ_API_KEY di Dashboard Vercel > Settings > Environment Variables.",
+          error: "⚠️ Maaf, sistem Vision AI sedang mengalami antrean pemrosesan visual. Silakan coba kirim ulang foto dalam beberapa saat.",
         },
-        { status: 500 }
+        { status: 503 }
       )
     }
 
+    // =========================================================================
+    // 2. STANDARD TEXT CHAT PIPELINE
+    // =========================================================================
     const groq = new Groq({ apiKey })
-    const { messages, model, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
-    if (model) requestedModel = model
 
     const isOwnerMode =
       isOwner ||
@@ -73,79 +220,22 @@ export async function POST(req: Request) {
 
     const systemMessage = { role: "system", content: systemContent }
 
-    // Check if the latest user turn or any recent message has image attachments
-    const hasImages = messages.some(
-      (m: any) => m.attachments && m.attachments.some((a: any) => a.type?.startsWith("image/"))
+    const candidates = [requestedModel, ...TEXT_FALLBACK_MODELS].filter(
+      (m, i, arr) => m && arr.indexOf(m) === i
     )
-
-    // Build model candidate cascade
-    let candidates: string[]
-    if (hasImages) {
-      // Try Vision models first, then fallback to text models with stripped images
-      candidates = [...VISION_MODELS, requestedModel, ...TEXT_FALLBACK_MODELS].filter(
-        (m, i, arr) => m && arr.indexOf(m) === i
-      )
-    } else {
-      candidates = [requestedModel, ...TEXT_FALLBACK_MODELS].filter(
-        (m, i, arr) => m && arr.indexOf(m) === i
-      )
-    }
 
     // Keep the last 20 turns for memory retention
     const recent = messages.slice(-20)
 
-    // Helper: format messages specifically for a given model (vision vs text-only)
-    const buildMessagesForModel = (isVision: boolean) => {
-      const formattedList: any[] = [systemMessage]
-
-      recent.forEach((m: any, idx: number) => {
-        const isLatestUser = idx === recent.length - 1 && m.role === "user"
-        const textContent = (typeof m.content === "string" ? m.content : "").trim()
-
-        if (isVision && isLatestUser && m.attachments?.some((a: any) => a.type?.startsWith("image/") && a.url)) {
-          // Build multimodal content array for Vision model
-          const parts: any[] = []
-          parts.push({
-            type: "text",
-            text: textContent || "Tolong periksa, jelaskan, dan baca isi gambar ini secara detail.",
-          })
-
-          m.attachments.forEach((att: any) => {
-            if (att.type?.startsWith("image/") && att.url) {
-              parts.push({
-                type: "image_url",
-                image_url: {
-                  url: att.url,
-                },
-              })
-            }
-          })
-
-          formattedList.push({
-            role: "user",
-            content: parts,
-          })
-        } else {
-          // Text-only turn or historical turn (strip heavy base64 to save context window)
-          let turnText = textContent
-          if (m.attachments?.length > 0) {
-            const fileNotes = m.attachments
-              .map((att: any) => `[Lampiran: ${att.name || "Berkas"} (${att.type || "file"})]`)
-              .join(" ")
-            turnText = turnText ? `${turnText}\n${fileNotes}` : fileNotes
-          }
-
-          if (turnText || m.role === "assistant") {
-            formattedList.push({
-              role: m.role === "assistant" ? "assistant" : "user",
-              content: turnText || "...",
-            })
-          }
-        }
-      })
-
-      return formattedList
-    }
+    const textMessages = [
+      systemMessage,
+      ...recent
+        .filter((m: any) => (typeof m.content === "string" && m.content.trim().length > 0) || m.role === "assistant")
+        .map((m: any) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content || "...",
+        })),
+    ]
 
     let response: any = null
     let usedModel = requestedModel
@@ -153,16 +243,13 @@ export async function POST(req: Request) {
     let lastError: any = null
 
     for (const tryModel of candidates) {
-      const isVisionModel = VISION_MODELS.includes(tryModel)
-      const modelMessages = buildMessagesForModel(isVisionModel)
-
       try {
         response = await groq.chat.completions.create({
           model: tryModel,
-          messages: modelMessages,
+          messages: textMessages,
           stream: true,
-          temperature: isVisionModel ? 0.4 : globalSettings.temperature,
-          max_tokens: isVisionModel ? 2048 : 4096,
+          temperature: globalSettings.temperature,
+          max_tokens: 4096,
           top_p: globalSettings.topP,
         })
         usedModel = tryModel
@@ -173,13 +260,8 @@ export async function POST(req: Request) {
         const status = err?.status || err?.error?.status
         const msg = (err?.message || "").toLowerCase()
 
-        // If vision model 400/404/not found, continue to next model seamlessly
-        if (status === 404 || status === 400 || msg.includes("not found") || msg.includes("vision") || msg.includes("unsupported")) {
-          continue
-        }
-        if (status === 429 || msg.includes("rate_limit") || msg.includes("rate limit")) {
-          continue
-        }
+        if (status === 404 || status === 400 || msg.includes("not found")) continue
+        if (status === 429 || msg.includes("rate_limit") || msg.includes("rate limit")) continue
         if (status === 503 || msg.includes("overloaded")) {
           await new Promise((r) => setTimeout(r, 600))
           continue
