@@ -13,19 +13,19 @@ export default function LiveVoiceModal({
   onSendMessage,
 }: LiveVoiceModalProps) {
   const [callState, setCallState] = useState<"connecting" | "listening" | "thinking" | "speaking">("connecting")
-  const [userTranscript, setUserTranscript] = useState("")
-  const [aiTranscript, setAiTranscript] = useState("")
-  const [micActive, setMicActive] = useState(false)
+  const [transcript, setTranscript] = useState("")
+  const [aiText, setAiText] = useState("")
 
   const recognitionRef = useRef<any>(null)
   const silenceTimerRef = useRef<any>(null)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const isComponentMounted = useRef(true)
-  const lastProcessedTextRef = useRef("")
+  const latestTranscriptRef = useRef("")
+  const isThinkingOrSpeakingRef = useRef(false)
 
-  // ── 1. Text-to-Speech (Crystal-Clear Indonesian Audio Engine) ───────────────
-  const playAISpeech = useCallback((text: string, onFinish: () => void) => {
-    if (typeof window === "undefined") {
+  // ── 1. Text-to-Speech (Play AI Speech Audio) ──────────────────────────────
+  const playSpeech = useCallback((text: string, onFinish: () => void) => {
+    if (typeof window === "undefined" || !isComponentMounted.current) {
       onFinish()
       return
     }
@@ -42,7 +42,7 @@ export default function LiveVoiceModal({
       return
     }
 
-    // Stop any existing audio
+    // Stop ongoing audio
     if (currentAudioRef.current) {
       try {
         currentAudioRef.current.pause()
@@ -51,7 +51,6 @@ export default function LiveVoiceModal({
       currentAudioRef.current = null
     }
 
-    // Primary Engine: MP3 Stream via /api/tts (Works on 100% of iOS, Android, PWA, Chrome)
     try {
       const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText.substring(0, 240))}`
       const audio = new Audio(audioUrl)
@@ -60,34 +59,37 @@ export default function LiveVoiceModal({
       audio.onplay = () => {
         if (isComponentMounted.current) {
           setCallState("speaking")
+          isThinkingOrSpeakingRef.current = true
         }
       }
 
       audio.onended = () => {
         if (isComponentMounted.current) {
           currentAudioRef.current = null
+          isThinkingOrSpeakingRef.current = false
           onFinish()
         }
       }
 
       audio.onerror = () => {
-        // Secondary Fallback: Web SpeechSynthesis
-        fallbackSpeechSynthesis(cleanText, onFinish)
+        // Fallback: SpeechSynthesis
+        fallbackTTS(cleanText, onFinish)
       }
 
-      const playPromise = audio.play()
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          fallbackSpeechSynthesis(cleanText, onFinish)
+      const promise = audio.play()
+      if (promise !== undefined) {
+        promise.catch(() => {
+          fallbackTTS(cleanText, onFinish)
         })
       }
     } catch {
-      fallbackSpeechSynthesis(cleanText, onFinish)
+      fallbackTTS(cleanText, onFinish)
     }
   }, [])
 
-  const fallbackSpeechSynthesis = (text: string, onFinish: () => void) => {
+  const fallbackTTS = (text: string, onFinish: () => void) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      isThinkingOrSpeakingRef.current = false
       onFinish()
       return
     }
@@ -108,22 +110,32 @@ export default function LiveVoiceModal({
       if (idVoice) utterance.voice = idVoice
 
       utterance.onstart = () => {
-        if (isComponentMounted.current) setCallState("speaking")
+        if (isComponentMounted.current) {
+          setCallState("speaking")
+          isThinkingOrSpeakingRef.current = true
+        }
       }
       utterance.onend = () => {
-        if (isComponentMounted.current) onFinish()
+        if (isComponentMounted.current) {
+          isThinkingOrSpeakingRef.current = false
+          onFinish()
+        }
       }
       utterance.onerror = () => {
-        if (isComponentMounted.current) onFinish()
+        if (isComponentMounted.current) {
+          isThinkingOrSpeakingRef.current = false
+          onFinish()
+        }
       }
 
       window.speechSynthesis.speak(utterance)
     } catch {
+      isThinkingOrSpeakingRef.current = false
       onFinish()
     }
   }
 
-  // ── 2. Speech Recognition (User Listening Engine) ──────────────────────────
+  // ── 2. Speech Recognition (User Speech Turn) ──────────────────────────────
   const stopListening = useCallback(() => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
@@ -134,11 +146,38 @@ export default function LiveVoiceModal({
       try { recognitionRef.current.abort() } catch {}
       recognitionRef.current = null
     }
-    setMicActive(false)
   }, [])
 
+  const sendCurrentSpeech = useCallback(async (speechText: string) => {
+    if (!speechText.trim() || !isComponentMounted.current) return
+
+    stopListening()
+    setTranscript("")
+    latestTranscriptRef.current = ""
+    setCallState("thinking")
+    isThinkingOrSpeakingRef.current = true
+
+    try {
+      const response = await onSendMessage(speechText.trim())
+      if (response && isComponentMounted.current) {
+        setAiText(response)
+        playSpeech(response, () => {
+          if (isComponentMounted.current) {
+            startListening()
+          }
+        })
+      } else if (isComponentMounted.current) {
+        startListening()
+      }
+    } catch {
+      if (isComponentMounted.current) {
+        startListening()
+      }
+    }
+  }, [onSendMessage, playSpeech, stopListening])
+
   const startListening = useCallback(() => {
-    if (!isComponentMounted.current) return
+    if (!isComponentMounted.current || isThinkingOrSpeakingRef.current) return
     stopListening()
 
     const SpeechRecognitionClass =
@@ -151,89 +190,84 @@ export default function LiveVoiceModal({
 
     try {
       const recognition = new SpeechRecognitionClass()
-      recognition.continuous = true
+      // continuous = false is 100x more stable on Android and iOS browsers
+      recognition.continuous = false
       recognition.interimResults = true
       recognition.lang = "id-ID"
 
-      let localText = ""
-
       recognition.onstart = () => {
-        if (isComponentMounted.current) {
+        if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
           setCallState("listening")
-          setMicActive(true)
         }
       }
 
       recognition.onresult = (event: any) => {
-        let full = ""
+        let text = ""
         for (let i = 0; i < event.results.length; i++) {
-          full += event.results[i][0].transcript
+          text += event.results[i][0].transcript
         }
 
-        const candidate = full.trim()
-        if (candidate) {
-          localText = candidate
-          setUserTranscript(localText)
+        if (text.trim()) {
+          const clean = text.trim()
+          setTranscript(clean)
+          latestTranscriptRef.current = clean
 
-          // Silence timeout: when user pauses for 1.3 seconds, trigger AI response
+          // Reset silence timer: automatically send when user pauses for 1.4 seconds
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-          silenceTimerRef.current = setTimeout(async () => {
-            if (!localText.trim() || !isComponentMounted.current) return
-            if (localText === lastProcessedTextRef.current) return
-
-            const textToSend = localText.trim()
-            lastProcessedTextRef.current = textToSend
-
-            stopListening()
-            setUserTranscript("")
-            setCallState("thinking")
-
-            try {
-              const aiReply = await onSendMessage(textToSend)
-              if (aiReply && isComponentMounted.current) {
-                setAiTranscript(aiReply)
-                playAISpeech(aiReply, () => {
-                  if (isComponentMounted.current) {
-                    lastProcessedTextRef.current = ""
-                    startListening()
-                  }
-                })
-              } else if (isComponentMounted.current) {
-                lastProcessedTextRef.current = ""
-                startListening()
-              }
-            } catch {
-              if (isComponentMounted.current) {
-                lastProcessedTextRef.current = ""
-                startListening()
-              }
+          silenceTimerRef.current = setTimeout(() => {
+            if (latestTranscriptRef.current && !isThinkingOrSpeakingRef.current) {
+              sendCurrentSpeech(latestTranscriptRef.current)
             }
-          }, 1300)
+          }, 1400)
         }
       }
 
       recognition.onerror = (event: any) => {
-        if (event.error === "no-speech") return
-        if (event.error === "aborted") return
-        console.warn("Live speech recognition notice:", event.error)
+        if (event.error === "no-speech") {
+          // If no speech detected, restart listening cleanly if still in listening state
+          if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
+            setTimeout(() => {
+              if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
+                startListening()
+              }
+            }, 300)
+          }
+          return
+        }
       }
 
       recognition.onend = () => {
-        setMicActive(false)
+        // If recognition naturally ends and we have captured transcript, send it
+        if (latestTranscriptRef.current && !isThinkingOrSpeakingRef.current) {
+          sendCurrentSpeech(latestTranscriptRef.current)
+        } else if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
+          // If ended without speech, keep listening active
+          setTimeout(() => {
+            if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
+              startListening()
+            }
+          }, 300)
+        }
       }
 
       recognitionRef.current = recognition
       recognition.start()
-    } catch (err) {
-      console.warn("SpeechRecognition start error:", err)
+    } catch {
+      // ignore start errors and retry
+      setTimeout(() => {
+        if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
+          startListening()
+        }
+      }, 500)
     }
-  }, [onSendMessage, playAISpeech, stopListening])
+  }, [sendCurrentSpeech, stopListening])
 
   // ── 3. Lifecycle Initialization ───────────────────────────────────────────
   useEffect(() => {
     isComponentMounted.current = true
+    isThinkingOrSpeakingRef.current = false
 
-    // Prime audio
+    // Pre-warm audio engine
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         const unlock = new SpeechSynthesisUtterance("")
@@ -265,9 +299,10 @@ export default function LiveVoiceModal({
     }
   }, [startListening, stopListening])
 
-  // ── 4. Interrupt AI Speech ────────────────────────────────────────────────
+  // ── 4. Orb Interaction (Tap to Send or Tap to Interrupt) ──────────────────
   const handleOrbTap = () => {
     if (callState === "speaking") {
+      // Interrupt AI speech
       if (currentAudioRef.current) {
         try {
           currentAudioRef.current.pause()
@@ -278,18 +313,22 @@ export default function LiveVoiceModal({
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try { window.speechSynthesis.cancel() } catch {}
       }
+      isThinkingOrSpeakingRef.current = false
       startListening()
+    } else if (callState === "listening" && transcript.trim()) {
+      // Manual trigger send if user taps orb immediately
+      sendCurrentSpeech(transcript.trim())
     }
   }
 
-  // ── 5. Dynamic Visual Styling ─────────────────────────────────────────────
+  // ── 5. Visual Styling ─────────────────────────────────────────────────────
   const getOrbStyles = () => {
     switch (callState) {
       case "listening":
         return {
           background: "linear-gradient(135deg, #FFFFFF, #E5E7EB)",
           boxShadow: "0 0 50px rgba(255, 255, 255, 0.45)",
-          transform: micActive ? "scale(1.08)" : "scale(1.0)",
+          transform: transcript ? "scale(1.1)" : "scale(1.0)",
         }
       case "thinking":
         return {
@@ -315,7 +354,7 @@ export default function LiveVoiceModal({
   const getStateText = () => {
     switch (callState) {
       case "listening":
-        return micActive ? "Mendengarkan suara kamu..." : "Membuka mikrofon..."
+        return transcript ? "Mendengarkan ucapanmu..." : "Silakan bicara, aku mendengarkan..."
       case "thinking":
         return "FYY-AI sedang berpikir..."
       case "speaking":
@@ -340,14 +379,14 @@ export default function LiveVoiceModal({
           FYY-AI Live Voice Call
         </h2>
 
-        <p className="text-xs text-rose-400/90 font-semibold tracking-wider animate-pulse-slow">
+        <p className="text-xs text-rose-400 font-semibold tracking-wider animate-pulse-slow">
           {getStateText()}
         </p>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-full text-[10px] text-gray-400 font-medium">
           {callState === "listening" && <Mic size={11} className="text-white animate-bounce" />}
           {callState === "speaking" && <Volume2 size={11} className="text-rose-400 animate-pulse" />}
-          <span>Panggilan Suara Bebas Pulsa</span>
+          <span>Panggilan Suara Real-Time Bebas Pulsa</span>
         </div>
       </div>
 
@@ -373,12 +412,18 @@ export default function LiveVoiceModal({
           type="button"
           onClick={handleOrbTap}
           style={getOrbStyles()}
-          className="relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full transition-all duration-500 ease-out flex items-center justify-center cursor-pointer select-none overflow-hidden"
-          title={callState === "speaking" ? "Ketuk untuk menyela suara AI" : ""}
+          className="relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full transition-all duration-500 ease-out flex items-center justify-center cursor-pointer select-none overflow-hidden active:scale-95"
+          title={
+            callState === "speaking"
+              ? "Ketuk untuk menyela suara AI"
+              : callState === "listening" && transcript
+              ? "Ketuk untuk langsung kirim"
+              : ""
+          }
         >
           <div
             className={`w-3/4 h-3/4 rounded-full bg-white/20 blur-md pointer-events-none transition-all duration-300 ${
-              callState === "speaking" ? "animate-pulse" : ""
+              callState === "speaking" || transcript ? "animate-pulse" : ""
             }`}
           />
           <div className="absolute top-2.5 left-5 w-10 h-5 bg-white/40 rounded-full rotate-[-45deg] blur-[2px] opacity-70 pointer-events-none" />
@@ -387,16 +432,16 @@ export default function LiveVoiceModal({
 
       {/* Real-time Subtitle / Transcript Area */}
       <div className="w-full max-w-md min-h-[80px] mb-4 flex flex-col items-center justify-center text-center px-4">
-        {callState === "listening" && userTranscript && (
-          <p className="text-gray-300 text-sm sm:text-base font-medium italic animate-fade-in line-clamp-3">
-            "{userTranscript}..."
+        {callState === "listening" && transcript && (
+          <p className="text-white text-sm sm:text-base font-medium italic animate-fade-in line-clamp-3">
+            "{transcript}..."
           </p>
         )}
 
-        {callState === "speaking" && aiTranscript && (
+        {callState === "speaking" && aiText && (
           <div className="space-y-1 animate-fade-in">
             <p className="text-white text-sm sm:text-base font-semibold leading-relaxed line-clamp-3">
-              {aiTranscript}
+              {aiText}
             </p>
             <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">
               Ketuk bola tengah untuk menyela
