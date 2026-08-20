@@ -14,26 +14,9 @@ export default function ThemeStyleProvider() {
       document.body.classList.add(newClass)
     }
 
-    const init = async () => {
-      const savedTheme = localStorage.getItem("fyy-ai-theme-style") || "basic"
-      applyThemeClass(savedTheme)
-
-      try {
-        const response = await fetch("/api/settings")
-        if (response.ok) {
-          const data = await response.json()
-          const themeStyle = data.themeStyle || "basic"
-          if (themeStyle !== savedTheme) {
-            applyThemeClass(themeStyle)
-            localStorage.setItem("fyy-ai-theme-style", themeStyle)
-          }
-        }
-      } catch (e) {
-        console.error("Theme sync error:", e)
-      }
-    }
-
-    init()
+    // Instant local read without network latency
+    const savedTheme = localStorage.getItem("fyy-ai-theme-style") || "basic"
+    applyThemeClass(savedTheme)
 
     const handleThemeChange = (e: any) => {
       applyThemeClass(e.detail)
