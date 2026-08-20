@@ -51,7 +51,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const liveAvgVolume = useRef<number>(0)
   const morphPhaseRef = useRef<number>(0)
 
-  // Color interpolation for buttery-smooth non-glitching transitions
+  // Color interpolation for smooth non-glitching transitions
   const currentColor = useRef<{ r: number; g: number; b: number; a: number }>({ r: 255, g: 255, b: 255, a: 0.9 })
   const currentScale = useRef<number>(1.0)
 
@@ -118,6 +118,14 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       interruptAI()
 
+      // STOP mic recording while AI is speaking to prevent acoustic echo feedback!
+      if (recorder.current && recorder.current.state === "recording") {
+        try { recorder.current.stop() } catch {}
+      }
+      isRecording.current = false
+      isUserSpeakingRef.current = false
+      audioChunks.current = []
+
       let isFinished = false
       const finish = () => {
         if (isFinished) return
@@ -127,10 +135,15 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           watchdogTimer.current = null
         }
         isAiBusy.current = false
-        if (isMounted.current) onDone()
+
+        // Acoustic cooldown (450ms) to allow speaker echo to dissipate before mic opens
+        if (isMounted.current) {
+          setTimeout(() => {
+            if (isMounted.current) onDone()
+          }, 450)
+        }
       }
 
-      // Safety watchdog
       watchdogTimer.current = setTimeout(
         finish,
         Math.min(22000, Math.max(3500, cleanText.length * 85))
@@ -150,7 +163,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
             await ctx.resume()
           }
 
-          // Fetch TTS with a 3-second timeout controller
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 3000)
 
@@ -250,8 +262,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     audioChunks.current = []
 
     const totalSize = chunks.reduce((acc, chunk) => acc + chunk.size, 0)
-    // Ignore near-silent data (< 1800 bytes)
-    if (!wasSpeaking || totalSize < 1800) {
+    // Ignore near-silent data (< 2000 bytes)
+    if (!wasSpeaking || totalSize < 2000) {
       if (isMounted.current && !isAiBusy.current) {
         startListeningSession()
       }
@@ -334,7 +346,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       recorder.current = rec
 
       rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0 && isMounted.current) {
+        if (e.data && e.data.size > 0 && isMounted.current && !isAiBusy.current) {
           audioChunks.current.push(e.data)
         }
       }
@@ -432,7 +444,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
         const speechThreshold = Math.max(16, ambientFloor.current + 10)
 
-        // Robust VAD with Debouncing to prevent flickering
+        // Strict VAD: ONLY trigger when in listening phase and AI is NOT busy
         if (!isAiBusy.current && isRecording.current && !isMutedRef.current) {
           if (avg > speechThreshold) {
             isUserSpeakingRef.current = true
@@ -443,10 +455,9 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
               silenceTimer.current = null
             }
 
-            // Hold speech state for at least 500ms after brief syllable drops
             if (speechHoldTimer.current) clearTimeout(speechHoldTimer.current)
             speechHoldTimer.current = setTimeout(() => {
-              // Speech hold ended, wait for natural sentence conclusion
+              // Speech hold ended
             }, 500)
           } else if (isUserSpeakingRef.current) {
             // User stopped talking: wait 1.1s of quiet before finalizing turn
@@ -530,7 +541,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         targetScale = 0.9
       }
 
-      // Smooth Lerping (Linear Interpolation) to eliminate color glitching
+      // Smooth Lerping to eliminate color glitching
       const lerpFactor = 0.12
       currentColor.current.r += (targetColor.r - currentColor.current.r) * lerpFactor
       currentColor.current.g += (targetColor.g - currentColor.current.g) * lerpFactor
@@ -847,7 +858,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         </div>
       </main>
 
-      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE (Alternates User ↔ AI) ── */}
+      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE ── */}
       {showSubtitles && (
         <section className="w-full max-w-md px-6 mb-3 min-h-[68px] flex flex-col items-center justify-center text-center z-20">
           {phase === "error" ? (

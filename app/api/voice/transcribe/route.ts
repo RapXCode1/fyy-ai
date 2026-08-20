@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
-// Known Whisper hallucinations on silence / ambient noise
+// Known Whisper hallucinations & short echo artifacts on silence / ambient noise
 const WHISPER_HALLUCINATIONS = new Set([
   "terima kasih.",
   "terima kasih",
@@ -34,6 +34,15 @@ const WHISPER_HALLUCINATIONS = new Set([
   "pemrograman",
   "tanya jawab",
   "bantuan ai",
+  "so",
+  "so.",
+  "ah",
+  "eh",
+  "hm",
+  "hmm",
+  "oh",
+  "uh",
+  "s",
 ])
 
 export async function POST(req: Request) {
@@ -51,8 +60,8 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const audioFile = formData.get("file") as Blob | null
 
-    if (!audioFile || audioFile.size < 4000) {
-      // Audio is too small to contain meaningful speech
+    if (!audioFile || audioFile.size < 3000) {
+      // Audio is too small to contain meaningful user speech
       return NextResponse.json({ success: true, text: "" })
     }
 
@@ -62,7 +71,6 @@ export async function POST(req: Request) {
     groqFormData.append("model", "whisper-large-v3-turbo")
     groqFormData.append("temperature", "0.0")
     groqFormData.append("response_format", "json")
-    // NOTE: DO NOT append a descriptive prompt here, as Whisper will repeat the prompt on low ambient noise!
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
@@ -87,11 +95,11 @@ export async function POST(req: Request) {
     // Clean common subtitle/noise tags
     text = text.replace(/\[.*?\]|\(.*?\)/g, "").trim()
 
-    // Filter out Whisper silence hallucinations
+    // Filter out Whisper silence hallucinations and short echo artifacts
     const normalized = text.toLowerCase().replace(/[^\w\s]/g, "").trim()
     if (
       !text ||
-      text.length <= 1 ||
+      text.length <= 2 ||
       WHISPER_HALLUCINATIONS.has(text.toLowerCase()) ||
       WHISPER_HALLUCINATIONS.has(normalized) ||
       normalized === "terima kasih" ||
@@ -100,6 +108,9 @@ export async function POST(req: Request) {
       normalized === "subtitles by amara org" ||
       normalized === "amara org" ||
       normalized === "you" ||
+      normalized === "so" ||
+      normalized === "ah" ||
+      normalized === "eh" ||
       normalized.includes("terima kasih sudah menonton") ||
       normalized.includes("subtitles by")
     ) {
