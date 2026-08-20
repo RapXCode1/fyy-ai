@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@capacitor/browser": "^8.0.3",
+    "@capacitor/ios": "^8.5.0",
     "@clerk/nextjs": "^7.3.5",
     "@google/generative-ai": "^0.24.1",
     "@huggingface/inference": "^4.13.15",
