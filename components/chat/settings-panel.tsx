@@ -215,6 +215,16 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                         'Nunito': 'Nunito, sans-serif',
                         'Montserrat': 'Montserrat, sans-serif',
                       }
+                      if (font.id !== 'Inter') {
+                        const fontLinkId = `fyy-font-${font.id.toLowerCase().replace(/\s+/g, '-')}`
+                        if (!document.getElementById(fontLinkId)) {
+                          const link = document.createElement('link')
+                          link.id = fontLinkId
+                          link.rel = 'stylesheet'
+                          link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(font.id)}:wght@400;600;700&display=swap`
+                          document.head.appendChild(link)
+                        }
+                      }
                       document.body.style.fontFamily = fontMap[font.id] || 'Inter, sans-serif'
                       if (onFontChange) {
                         onFontChange(font.id)

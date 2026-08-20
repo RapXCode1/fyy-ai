@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { Settings, Menu, X, Sparkles, Download, FileJson, FileText, FileCode2, Sliders, Cpu, Brain, Layers } from "lucide-react"
 import ChatSidebar from "@/components/chat/chat-sidebar"
 import MessageList from "@/components/chat/message-list"
@@ -8,17 +9,19 @@ import QuickPrompts from "@/components/chat/quick-prompts"
 import { AI_MODES } from "@/lib/ai-modes"
 import ModelSelector from "@/components/chat/model-selector"
 import ChatInput from "@/components/chat/chat-input"
-import SettingsPanel from "@/components/chat/settings-panel"
-import ImageGenerator from "@/components/chat/image-generator"
 import ModesSelector from "@/components/chat/modes-selector"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useSpeechOutput } from "@/hooks/use-voice-input"
 import { useMicrophonePermission } from "@/hooks/use-microphone-permission"
-import LiveVoiceModal from "@/components/chat/live-voice-modal"
 import { useUser, useSession, useAuth } from "@clerk/nextjs"
-import { createClerkSupabaseClient, getClerkSupabaseToken, isSupabaseConfigured } from "@/lib/supabase"
-import { HeroWelcomeAnimation } from "@/components/animations/welcome-animation"
+import { createClerkSupabaseClient, getClerkSupabaseToken, isSupabaseConfigured, tripSupabaseCircuitBreaker } from "@/lib/supabase"
 import { formatBrandedError, OFFICIAL_MODELS, DEFAULT_MODEL_ID } from "@/lib/models"
+
+// Code-split heavy interactive modals & animations to minimize initial JS bundle
+const SettingsPanel = dynamic(() => import("@/components/chat/settings-panel"), { ssr: false })
+const ImageGenerator = dynamic(() => import("@/components/chat/image-generator"), { ssr: false })
+const LiveVoiceModal = dynamic(() => import("@/components/chat/live-voice-modal"), { ssr: false })
+const HeroWelcomeAnimation = dynamic(() => import("@/components/animations/welcome-animation").then(m => m.HeroWelcomeAnimation), { ssr: false })
 
 interface Message {
   id: string
@@ -347,7 +350,7 @@ export default function ChatPage() {
             .order('created_at', { ascending: false })
 
           if (error) {
-            console.warn('Supabase sync skipped:', error.message)
+            tripSupabaseCircuitBreaker(error.message)
             setInitialLoadDone(true)
             return
           }
@@ -391,8 +394,8 @@ export default function ChatPage() {
             }
           }
           setInitialLoadDone(true)
-        } catch (e) {
-          console.warn("Supabase fetch skipped:", e)
+        } catch (e: any) {
+          tripSupabaseCircuitBreaker(e?.message)
           setInitialLoadDone(true)
         }
       }
@@ -400,18 +403,20 @@ export default function ChatPage() {
     }
   }, [user, session, initialLoadDone, currentConversationId])
 
-  // Sync current conversation to Supabase
+  // Sync current conversation to Supabase (Debounced)
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
     if (isClient && initialLoadDone && user && session && currentConversationId && isSupabaseConfigured()) {
       const currentConv = conversations.find(c => c.id === currentConversationId)
       if (currentConv) {
-        const syncToSupabase = async () => {
+        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
+        syncTimeoutRef.current = setTimeout(async () => {
           try {
             const token = await getClerkSupabaseToken(session)
             const supabase = createClerkSupabaseClient(token)
             if (!supabase) return
 
-            await supabase.from('conversations').upsert({
+            const { error } = await supabase.from('conversations').upsert({
               id: currentConv.id,
               user_id: user.id,
               title: currentConv.title,
@@ -420,12 +425,17 @@ export default function ChatPage() {
               mode: currentConv.mode,
               created_at: currentConv.createdAt.toISOString()
             })
-          } catch (e) {
-            console.warn("Failed to sync to Supabase:", e)
+            if (error) {
+              tripSupabaseCircuitBreaker(error.message)
+            }
+          } catch (e: any) {
+            tripSupabaseCircuitBreaker(e?.message)
           }
-        }
-        syncToSupabase()
+        }, 1500)
       }
+    }
+    return () => {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
     }
   }, [conversations, currentConversationId, isClient, initialLoadDone, user, session])
 
