@@ -255,12 +255,12 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Stats */}
-            <div className="flex flex-wrap gap-6 pt-2">
+            {/* Stats - Symmetric 2x2 on mobile, 4-col on desktop */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 pt-3">
               {stats.map(s => (
-                <div key={s.label} className="text-center">
-                  <p className="text-xl font-bold" style={{ color: "#F9FAFB" }}>{s.value}</p>
-                  <p className="text-xs" style={{ color: "#6B7280" }}>{s.label}</p>
+                <div key={s.label} className="bg-white/[0.03] sm:bg-transparent border border-white/[0.06] sm:border-0 rounded-2xl p-3.5 sm:p-0 text-center sm:text-left">
+                  <p className="text-xl sm:text-2xl font-extrabold text-white">{s.value}</p>
+                  <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5">{s.label}</p>
                 </div>
               ))}
             </div>

@@ -189,76 +189,81 @@ export default function ImageGenerator({ onClose, onGuestLimit }: ImageGenerator
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 flex-1 overflow-y-auto min-h-0">
-        {/* Model Selection */}
+        {/* Model Selection - 2x2 Touch Grid */}
         <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-          <Label htmlFor="model-select">AI Model</Label>
-          <Select value={selectedModel} onValueChange={(value) => {
-            // Prevent any event bubbling that might close the panel
-            setSelectedModel(value)
-          }}>
-            <SelectTrigger onClick={(e) => e.stopPropagation()}>
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent onClick={(e) => e.stopPropagation()}>
-              {imageModels.map((model) => (
-                <SelectItem key={model.id} value={model.id} onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between w-full">
-                    <div>
-                      <div className="font-medium">{model.name}</div>
-                      <div className="text-sm text-muted-foreground">{model.description}</div>
-                    </div>
-                    {model.recommended && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded ml-2">
-                        PRO
-                      </span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="text-xs font-bold uppercase tracking-wider text-[var(--fyf-text-secondary)]">Pilih Model Studio</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {imageModels.map((model) => (
+              <button
+                type="button"
+                key={model.id}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedModel(model.id)
+                }}
+                className={`p-3 rounded-2xl border text-left transition-all duration-200 relative ${
+                  selectedModel === model.id
+                    ? "bg-rose-500/10 border-rose-500/50 shadow-md shadow-rose-500/5"
+                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05]"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-white truncate">{model.name}</div>
+                  {model.recommended && (
+                    <span className="text-[9px] font-extrabold bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded-md">
+                      PRO
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-gray-400 mt-1 line-clamp-2 leading-tight">
+                  {model.description}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Prompt Input */}
         <div className="space-y-2">
-          <Label htmlFor="prompt">Describe the image you want to generate</Label>
-          <Input
+          <Label htmlFor="prompt" className="text-xs font-bold uppercase tracking-wider text-[var(--fyf-text-secondary)]">Deskripsi Gambar (Prompt)</Label>
+          <textarea
             id="prompt"
-            placeholder="A beautiful sunset over mountains with a lake..."
+            placeholder="Contoh: Seekor naga emas terbang di atas pegunungan berkabut, pencahayaan sinematik..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="min-h-[80px] resize-none"
+            rows={3}
+            className="w-full px-3.5 py-2.5 bg-black/40 border border-white/[0.08] rounded-xl text-xs text-white placeholder-gray-500 outline-none focus:border-rose-500/50 transition-colors resize-none leading-relaxed"
             disabled={isGenerating}
           />
         </div>
 
         {/* Size Settings */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="width">Width</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="width" className="text-xs font-bold uppercase tracking-wider text-[var(--fyf-text-secondary)]">Lebar</Label>
             <Select value={width.toString()} onValueChange={(value) => setWidth(Number(value))}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl bg-black/40 border-white/[0.08] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="256">256px</SelectItem>
                 <SelectItem value="512">512px</SelectItem>
                 <SelectItem value="768">768px</SelectItem>
-                <SelectItem value="1024">1024px (May be slow)</SelectItem>
+                <SelectItem value="1024">1024px</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="height">Height</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="height" className="text-xs font-bold uppercase tracking-wider text-[var(--fyf-text-secondary)]">Tinggi</Label>
             <Select value={height.toString()} onValueChange={(value) => setHeight(Number(value))}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl bg-black/40 border-white/[0.08] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="256">256px</SelectItem>
                 <SelectItem value="512">512px</SelectItem>
                 <SelectItem value="768">768px</SelectItem>
-                <SelectItem value="1024">1024px (May be slow)</SelectItem>
+                <SelectItem value="1024">1024px</SelectItem>
               </SelectContent>
             </Select>
           </div>

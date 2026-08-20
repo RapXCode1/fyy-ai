@@ -16,14 +16,20 @@ export const runtime = "nodejs"
 export const maxDuration = 60 // seconds (Vercel Pro/Hobby max)
 
 // ── Model cascade — ordered by reliability & availability ─────────────────────
-// Fast & always-available models first, heavy reasoning models as last resort.
 const RELIABLE_CASCADE: string[] = [
-  "llama-3.3-70b-versatile",   // Most stable, great quality
+  "llama-3.3-70b-versatile",   // Most stable, great quality & memory
   "llama-3.1-8b-instant",      // Ultra-fast, high availability
   "gemma2-9b-it",              // Reliable small model
   "openai/gpt-oss-20b",        // Medium weight fallback
-  "openai/gpt-oss-120b",       // Heavy, last resort
+  "openai/gpt-oss-120b",       // Heavy, reasoning
   "qwen/qwen3.6-27b",          // Alternative
+]
+
+const VISION_CASCADE: string[] = [
+  "llama-3.2-11b-vision-preview",
+  "llama-3.2-90b-vision-preview",
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
 ]
 
 export async function POST(req: Request) {
@@ -36,7 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "🔑 API Key **FYY-GROQ SYSTEM INTELLIGENCE** belum terpasang.\n\nSilakan buka Dashboard Vercel > **Settings** > **Environment Variables** > tambahkan **`GROQ_API_KEY`** lalu lakukan **Redeploy**.",
+            "🔑 API Key **FYY-GROQ SYSTEM INTELLIGENCE** belum terpasang di Vercel.\n\nSilakan buka Dashboard Vercel > **Settings** > **Environment Variables** > tambahkan **`GROQ_API_KEY`** lalu lakukan **Redeploy**.",
         },
         { status: 500 }
       )
@@ -73,42 +79,46 @@ export async function POST(req: Request) {
 
     const systemMessage = { role: "system", content: systemContent }
 
+    // ── Check if any message contains image attachments ───────────────────
+    const hasImages = messages.some(
+      (m: any) => m.attachments && m.attachments.some((a: any) => a.type?.startsWith("image/"))
+    )
+
     // ── Build model candidate list ──────────────────────────────────────────
-    // Put user's chosen model first, then reliable cascade (deduped)
     const finalModel = model || DEFAULT_MODEL_ID
-    const candidateModels = [
-      finalModel,
-      ...RELIABLE_CASCADE,
-    ].filter((m, idx, arr) => m && arr.indexOf(m) === idx)
+    const baseList = hasImages ? [...VISION_CASCADE, finalModel] : [finalModel, ...RELIABLE_CASCADE]
+    const candidateModels = baseList.filter((m, idx, arr) => m && arr.indexOf(m) === idx)
 
-    // ── Process messages (handle image attachments) ─────────────────────────
-    const processedMessages = messages.map((m: any) => {
-      const isVisionCapable =
-        finalModel.includes("vision") ||
-        finalModel.includes("llama-4") ||
-        finalModel.includes("gpt-oss") ||
-        finalModel.includes("qwen3")
+    // ── Clean & preserve conversation memory (keep last 25 turns) ───────────
+    const recentMessages = messages.slice(-25)
 
-      const contentParts: any[] = []
-      if (m.content) contentParts.push({ type: "text", text: m.content })
+    const processedMessages = recentMessages
+      .filter((m: any) => {
+        const hasText = typeof m.content === "string" && m.content.trim().length > 0
+        const hasAtts = Array.isArray(m.attachments) && m.attachments.length > 0
+        return hasText || hasAtts
+      })
+      .map((m: any) => {
+        const contentParts: any[] = []
+        if (m.content) contentParts.push({ type: "text", text: m.content })
 
-      if (m.attachments?.length > 0) {
-        m.attachments.forEach((att: any) => {
-          if (att.type.startsWith("image/") && isVisionCapable) {
-            contentParts.push({ type: "image_url", image_url: { url: att.url } })
-          } else {
-            const info = `\n[Attachment: ${att.name} (${(att.size / 1024 / 1024).toFixed(2)}MB), Type: ${att.type}]`
-            if (contentParts[0]?.type === "text") contentParts[0].text += info
-            else contentParts.push({ type: "text", text: info })
-          }
-        })
-      }
+        if (m.attachments?.length > 0) {
+          m.attachments.forEach((att: any) => {
+            if (att.type?.startsWith("image/") && att.url) {
+              contentParts.push({ type: "image_url", image_url: { url: att.url } })
+            } else {
+              const info = `\n[File Attachment: ${att.name} (${(att.size / 1024 / 1024).toFixed(2)}MB), Type: ${att.type}]`
+              if (contentParts[0]?.type === "text") contentParts[0].text += info
+              else contentParts.push({ type: "text", text: info })
+            }
+          })
+        }
 
-      return {
-        role: m.role,
-        content: isVisionCapable && contentParts.length > 1 ? contentParts : m.content,
-      }
-    })
+        return {
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: contentParts.length > 1 || (contentParts[0]?.type === "image_url") ? contentParts : (m.content || ""),
+        }
+      })
 
     // ── Smart cascade with error-type awareness ─────────────────────────────
     let response: any = null
@@ -137,9 +147,9 @@ export async function POST(req: Request) {
         const status = err?.status || err?.error?.status
         const msg = err?.message || ""
 
-        // 404 = model not found → try next immediately
-        if (status === 404 || msg.includes("model_not_found")) {
-          console.warn(`[FYY-CASCADE] ${modelToTry} not found, trying next...`)
+        // 404 / 400 (vision unsupported or model missing) → try next immediately
+        if (status === 404 || status === 400 || msg.includes("model_not_found") || msg.includes("vision")) {
+          console.warn(`[FYY-CASCADE] ${modelToTry} unsupported (${status}), trying next...`)
           continue
         }
 
@@ -156,13 +166,11 @@ export async function POST(req: Request) {
           continue
         }
 
-        // Other errors → move on
         console.warn(`[FYY-CASCADE] ${modelToTry} failed (${status}): ${msg}`)
       }
     }
 
     if (!response) {
-      // If ALL models failed, return a friendly message instead of crashing
       const friendlyMsg =
         lastError?.status === 429
           ? "Sistem FYY-AI sedang sangat ramai. Mohon coba lagi dalam beberapa detik — layanan ini gratis dan tanpa batas untuk semua pengguna! 🙏"
@@ -202,7 +210,6 @@ export async function POST(req: Request) {
                   insideThink = true
                   buf = buf.substring(start + 7)
                 } else {
-                  // Hold buffer if it might be mid-tag
                   if (/^<t?h?i?n?k?$/.test(buf.slice(-6))) break
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: buf })}\n\n`))
                   buf = ""
