@@ -1,30 +1,39 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { PhoneOff, Sparkles, Mic, Volume2, RefreshCw } from "lucide-react"
+import { PhoneOff, Sparkles, Mic, MicOff, MessageSquare, RefreshCw, Volume2 } from "lucide-react"
 
 interface LiveVoiceModalProps {
   onEndCall: () => void
   onSendMessage: (message: string) => Promise<string | void>
 }
 
+type CallPhase = "connecting" | "listening" | "thinking" | "speaking" | "error"
+
 export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceModalProps) {
-  const [callState, setCallState] = useState<"connecting" | "listening" | "thinking" | "speaking" | "error">("connecting")
+  const [phase, setPhase] = useState<CallPhase>("connecting")
   const [userTranscript, setUserTranscript] = useState("")
   const [aiTranscript, setAiTranscript] = useState("")
-  const [liveVolume, setLiveVolume] = useState(0)
+  const [isMuted, setIsMuted] = useState(false)
+  const [showSubtitles, setShowSubtitles] = useState(true)
   const [errorMsg, setErrorMsg] = useState("")
 
+  // References
   const isMounted = useRef(false)
   const isAiBusy = useRef(false)
   const isRecording = useRef(false)
   const isUserSpeaking = useRef(false)
   const speechFrameCount = useRef(0)
-  const ambientNoiseFloor = useRef(10) // dynamically calibrated
+  const ambientFloor = useRef(10)
+  const isMutedRef = useRef(isMuted)
+
+  useEffect(() => {
+    isMutedRef.current = isMuted
+  }, [isMuted])
 
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const animFrame = useRef<number | null>(null)
+  const watchdogTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const animFrameId = useRef<number | null>(null)
 
   const mediaStream = useRef<MediaStream | null>(null)
   const audioCtx = useRef<AudioContext | null>(null)
@@ -32,111 +41,185 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const recorder = useRef<MediaRecorder | null>(null)
   const audioChunks = useRef<Blob[]>([])
   const currentAudioSource = useRef<AudioBufferSourceNode | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // ── Helper: clear timers ──────────────────────────────────────────────────
-  const clearSilenceTimer = () => {
-    if (silenceTimer.current) { clearTimeout(silenceTimer.current); silenceTimer.current = null }
+  // Real-time audio frequency data for dynamic canvas rendering
+  const liveAudioData = useRef<Uint8Array<ArrayBuffer> | null>(null)
+  const liveAvgVolume = useRef<number>(0)
+  const morphPhaseRef = useRef<number>(0)
+
+  // ── Helper: Clear Timers ──────────────────────────────────────────────────
+  const clearTimers = () => {
+    if (silenceTimer.current) {
+      clearTimeout(silenceTimer.current)
+      silenceTimer.current = null
+    }
+    if (watchdogTimer.current) {
+      clearTimeout(watchdogTimer.current)
+      watchdogTimer.current = null
+    }
   }
-  const clearWatchdog = () => {
-    if (watchdog.current) { clearTimeout(watchdog.current); watchdog.current = null }
-  }
 
-  // ── 1. Play AI Speech via AudioContext ────────────────────────────────────
-  const playAI = useCallback((text: string, onDone: () => void) => {
-    if (!isMounted.current) { onDone(); return }
-
-    const clean = text
-      .replace(/```[\s\S]*?```/g, " Blok kode. ")
-      .replace(/[*_#`~>]/g, "")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/-\s/g, "")
-      .trim()
-
-    if (!clean) { isAiBusy.current = false; onDone(); return }
-
+  // ── 1. Stop AI Audio & Interrupt Immediately (Barge-In) ───────────────────
+  const interruptAI = useCallback(() => {
+    if (watchdogTimer.current) {
+      clearTimeout(watchdogTimer.current)
+      watchdogTimer.current = null
+    }
     if (currentAudioSource.current) {
-      try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch {}
+      try {
+        currentAudioSource.current.stop()
+        currentAudioSource.current.disconnect()
+      } catch {}
       currentAudioSource.current = null
     }
-
-    let done = false
-    const finish = () => {
-      if (done) return
-      done = true
-      clearWatchdog()
-      isAiBusy.current = false
-      if (isMounted.current) onDone()
-    }
-
-    watchdog.current = setTimeout(finish, Math.min(20000, Math.max(3500, clean.length * 80)))
-    setCallState("speaking")
-
-    const ctx = audioCtx.current
-    if (!ctx) { finish(); return }
-
-    const doPlay = async () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        if (ctx.state === "suspended") await ctx.resume()
-        if (ctx.state === "closed") { finish(); return }
-
-        const res = await fetch(`/api/tts?text=${encodeURIComponent(clean.substring(0, 240))}`)
-        if (!res.ok || !isMounted.current) {
-          fallbackTTS(clean, finish)
-          return
-        }
-
-        const arrayBuf = await res.arrayBuffer()
-        if (!isMounted.current) { finish(); return }
-
-        const audioBuf = await ctx.decodeAudioData(arrayBuf)
-        if (!isMounted.current) { finish(); return }
-
-        const src = ctx.createBufferSource()
-        src.buffer = audioBuf
-        src.connect(ctx.destination)
-        src.onended = finish
-        currentAudioSource.current = src
-        src.start(0)
-      } catch (err) {
-        console.warn("AudioContext TTS failed, fallback SpeechSynthesis:", err)
-        fallbackTTS(clean, finish)
-      }
+        window.speechSynthesis.cancel()
+      } catch {}
     }
-
-    doPlay()
+    isAiBusy.current = false
   }, [])
 
-  const fallbackTTS = (text: string, onDone: () => void) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) { onDone(); return }
+  // ── 2. Play AI Voice Response (AudioContext / Direct Buffer) ──────────────
+  const playAISpeech = useCallback(
+    (text: string, onDone: () => void) => {
+      if (!isMounted.current) {
+        onDone()
+        return
+      }
+
+      const cleanText = text
+        .replace(/```[\s\S]*?```/g, " Blok kode. ")
+        .replace(/[*_#`~>]/g, "")
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/-\s/g, "")
+        .trim()
+
+      if (!cleanText) {
+        isAiBusy.current = false
+        onDone()
+        return
+      }
+
+      interruptAI()
+
+      let isFinished = false
+      const finish = () => {
+        if (isFinished) return
+        isFinished = true
+        if (watchdogTimer.current) {
+          clearTimeout(watchdogTimer.current)
+          watchdogTimer.current = null
+        }
+        isAiBusy.current = false
+        if (isMounted.current) onDone()
+      }
+
+      // Safety watchdog: max 20 seconds per speech turn
+      watchdogTimer.current = setTimeout(
+        finish,
+        Math.min(22000, Math.max(3500, cleanText.length * 85))
+      )
+      setPhase("speaking")
+
+      const ctx = audioCtx.current
+      if (!ctx) {
+        finish()
+        return
+      }
+
+      const runPlayback = async () => {
+        try {
+          if (ctx.state === "suspended") await ctx.resume()
+          if (ctx.state === "closed") {
+            finish()
+            return
+          }
+
+          const res = await fetch(`/api/tts?text=${encodeURIComponent(cleanText.substring(0, 240))}`)
+          if (!res.ok || !isMounted.current) {
+            fallbackSpeechSynthesis(cleanText, finish)
+            return
+          }
+
+          const arrayBuffer = await res.arrayBuffer()
+          if (!isMounted.current) {
+            finish()
+            return
+          }
+
+          const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+          if (!isMounted.current) {
+            finish()
+            return
+          }
+
+          const source = ctx.createBufferSource()
+          source.buffer = audioBuffer
+
+          // Connect to analyser for live waveform sync during AI speech
+          if (analyser.current) {
+            source.connect(analyser.current)
+          }
+          source.connect(ctx.destination)
+
+          source.onended = finish
+          currentAudioSource.current = source
+          source.start(0)
+        } catch (err) {
+          console.warn("AudioContext playback fallback to SpeechSynthesis:", err)
+          fallbackSpeechSynthesis(cleanText, finish)
+        }
+      }
+
+      runPlayback()
+    },
+    [interruptAI]
+  )
+
+  const fallbackSpeechSynthesis = (text: string, onDone: () => void) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      onDone()
+      return
+    }
     try {
       window.speechSynthesis.cancel()
       window.speechSynthesis.resume()
-      const utt = new SpeechSynthesisUtterance(text.substring(0, 220))
-      utt.lang = "id-ID"
-      utt.rate = 1.05
-      utt.volume = 1.0
+      const utterance = new SpeechSynthesisUtterance(text.substring(0, 220))
+      utterance.lang = "id-ID"
+      utterance.rate = 1.05
+      utterance.volume = 1.0
+
       const voices = window.speechSynthesis.getVoices()
-      const idVoice = voices.find((v) => v.lang.includes("id") || v.lang.includes("ID"))
-      if (idVoice) utt.voice = idVoice
-      utt.onend = onDone
-      utt.onerror = onDone
-      ;(window as any).__fyyVoiceUtt = utt
-      window.speechSynthesis.speak(utt)
-    } catch { onDone() }
+      const indonesianVoice =
+        voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
+        voices.find((v) => v.name.toLowerCase().includes("indonesia"))
+      if (indonesianVoice) utterance.voice = indonesianVoice
+
+      utterance.onend = onDone
+      utterance.onerror = onDone
+      ;(window as any).__fyyLiveUtterance = utterance
+      window.speechSynthesis.speak(utterance)
+    } catch {
+      onDone()
+    }
   }
 
-  // ── 2. Stop current recording session ─────────────────────────────────────
-  const stopRecording = useCallback(() => {
-    clearSilenceTimer()
+  // ── 3. Stop Active Recording Session ──────────────────────────────────────
+  const stopRecordingSession = useCallback(() => {
+    clearTimers()
     isRecording.current = false
 
     if (recorder.current && recorder.current.state === "recording") {
-      try { recorder.current.stop() } catch {}
+      try {
+        recorder.current.stop()
+      } catch {}
     }
   }, [])
 
-  // ── 3. Send audio → Groq Whisper → AI → TTS ──────────────────────────────
-  const sendAudioToSTT = useCallback(async () => {
+  // ── 4. Transcribe Audio (Groq Whisper Turbo) & Chat Completion ───────────
+  const processCapturedSpeech = useCallback(async () => {
     if (!isMounted.current) return
 
     const wasSpeaking = isUserSpeaking.current
@@ -146,62 +229,70 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     const chunks = audioChunks.current.slice()
     audioChunks.current = []
 
-    const totalSize = chunks.reduce((s, c) => s + c.size, 0)
-    // Audio must have detected speech and be > 3000 bytes (~0.35s)
-    if (!wasSpeaking || totalSize < 3000) {
-      if (isMounted.current && !isAiBusy.current) startListening()
+    const totalSize = chunks.reduce((acc, chunk) => acc + chunk.size, 0)
+    // Ignore near-silent data / noise clicks
+    if (!wasSpeaking || totalSize < 2800) {
+      if (isMounted.current && !isAiBusy.current) {
+        startListeningSession()
+      }
       return
     }
 
     const mimeType = chunks[0]?.type || "audio/webm"
-    const blob = new Blob(chunks, { type: mimeType })
+    const audioBlob = new Blob(chunks, { type: mimeType })
 
     isAiBusy.current = true
-    setCallState("thinking")
+    setPhase("thinking")
 
     try {
-      const fd = new FormData()
-      fd.append("file", blob, "speech.webm")
+      const formData = new FormData()
+      formData.append("file", audioBlob, "speech.webm")
 
-      const res = await fetch("/api/voice/transcribe", { method: "POST", body: fd })
+      const res = await fetch("/api/voice/transcribe", {
+        method: "POST",
+        body: formData,
+      })
       const data = await res.json()
-      const text = (data.text || "").trim()
+      const recognizedText = (data.text || "").trim()
 
       if (!isMounted.current) return
 
-      if (!text) {
-        // Hallucination filtered or silent -> resume listening
+      if (!recognizedText) {
+        // Hallucination filtered or unrecognized -> resume listening
         isAiBusy.current = false
-        setCallState("listening")
-        startListening()
+        setPhase("listening")
+        startListeningSession()
         return
       }
 
-      setUserTranscript(text)
-      const aiReply = await onSendMessage(text)
+      setUserTranscript(recognizedText)
+      const aiReply = await onSendMessage(recognizedText)
       if (!isMounted.current) return
 
       if (aiReply) {
         setAiTranscript(aiReply)
-        playAI(aiReply, () => {
-          if (isMounted.current) { setCallState("listening"); startListening() }
+        playAISpeech(aiReply, () => {
+          if (isMounted.current) {
+            setPhase("listening")
+            startListeningSession()
+          }
         })
       } else {
         isAiBusy.current = false
-        setCallState("listening")
-        startListening()
+        setPhase("listening")
+        startListeningSession()
       }
     } catch {
       if (isMounted.current) {
         isAiBusy.current = false
-        setCallState("listening")
-        startListening()
+        setPhase("listening")
+        startListeningSession()
       }
     }
-  }, [onSendMessage, playAI])
+  }, [onSendMessage, playAISpeech])
 
-  // ── 4. Start one guarded listening session ────────────────────────────────
-  const startListening = useCallback(() => {
+  // ── 5. Start Single Guarded Listening Session ─────────────────────────────
+  const startListeningSession = useCallback(() => {
     if (!isMounted.current || isAiBusy.current || isRecording.current) return
     if (!mediaStream.current) return
 
@@ -209,8 +300,8 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     isUserSpeaking.current = false
     speechFrameCount.current = 0
     audioChunks.current = []
-    clearSilenceTimer()
-    setCallState("listening")
+    clearTimers()
+    setPhase("listening")
 
     try {
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -223,28 +314,31 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       recorder.current = rec
 
       rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0 && isMounted.current) audioChunks.current.push(e.data)
+        if (e.data && e.data.size > 0 && isMounted.current) {
+          audioChunks.current.push(e.data)
+        }
       }
 
       rec.onstop = () => {
         isRecording.current = false
-        if (isMounted.current && !isAiBusy.current) sendAudioToSTT()
+        if (isMounted.current && !isAiBusy.current) {
+          processCapturedSpeech()
+        }
       }
 
       rec.start(100)
     } catch {
       isRecording.current = false
     }
-  }, [sendAudioToSTT])
+  }, [processCapturedSpeech])
 
-  // ── 5. Init microphone stream + Filter + Dynamic VAD loop ─────────────────
-  const initStream = useCallback(async () => {
-    setCallState("connecting")
+  // ── 6. Setup Audio Pipeline + Hardware Noise Suppression + Filters ────────
+  const initializeAudioStream = useCallback(async () => {
+    setPhase("connecting")
     setErrorMsg("")
 
     try {
-      // 1. Hardware Noise Suppression + Echo Cancellation
-      const stream = await Promise.race([
+      const stream = (await Promise.race([
         navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: { ideal: true },
@@ -254,138 +348,294 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
             sampleRate: 48000,
           },
         }),
-        new Promise<never>((_, rej) =>
-          setTimeout(() => rej(new Error("Mic timeout — izin tertunda")), 6000)
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Batas waktu izin mikrofon habis.")), 6000)
         ),
-      ]) as MediaStream
+      ])) as MediaStream
 
-      if (!isMounted.current) { stream.getTracks().forEach((t) => t.stop()); return }
+      if (!isMounted.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        return
+      }
 
       if (mediaStream.current) {
-        mediaStream.current.getTracks().forEach((t) => t.stop())
+        mediaStream.current.getTracks().forEach((track) => track.stop())
       }
       mediaStream.current = stream
 
       const ctx = audioCtx.current!
       if (ctx.state === "suspended") await ctx.resume()
 
-      // 2. Audio Processing Filter Chain:
-      // High-Pass Filter at 80Hz (cuts air con / rumble / breath pop)
+      // Biquad High-Pass Filter: Cuts 80Hz rumble/hum
       const highPass = ctx.createBiquadFilter()
       highPass.type = "highpass"
       highPass.frequency.value = 80
 
-      // Low-Pass Filter at 8000Hz (cuts high-frequency hiss / static)
+      // Biquad Low-Pass Filter: Cuts 8000Hz hiss
       const lowPass = ctx.createBiquadFilter()
       lowPass.type = "lowpass"
       lowPass.frequency.value = 8000
 
       const an = ctx.createAnalyser()
       an.fftSize = 256
-      an.smoothingTimeConstant = 0.2
+      an.smoothingTimeConstant = 0.3
       analyser.current = an
 
-      const src = ctx.createMediaStreamSource(stream)
-      src.connect(highPass)
+      const sourceNode = ctx.createMediaStreamSource(stream)
+      sourceNode.connect(highPass)
       highPass.connect(lowPass)
       lowPass.connect(an)
 
-      const buf = new Uint8Array(an.frequencyBinCount)
+      const bufferLength = an.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+      liveAudioData.current = dataArray
 
-      if (animFrame.current) cancelAnimationFrame(animFrame.current)
+      if (animFrameId.current) cancelAnimationFrame(animFrameId.current)
 
-      let calibrationSamples = 0
-      let calibrationSum = 0
+      let sampleCount = 0
+      let sampleSum = 0
 
-      const tick = () => {
+      const updateAudioLoop = () => {
         if (!isMounted.current) return
-        an.getByteFrequencyData(buf)
-        const avg = buf.reduce((a, b) => a + b, 0) / buf.length
-        setLiveVolume(avg)
 
-        // Dynamic noise floor calibration in first 30 frames (~0.5s)
-        if (calibrationSamples < 30) {
-          calibrationSum += avg
-          calibrationSamples++
-          ambientNoiseFloor.current = Math.max(8, calibrationSum / calibrationSamples)
+        an.getByteFrequencyData(dataArray)
+        const avg = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength
+        liveAvgVolume.current = avg
+
+        // Dynamic ambient noise floor calibration
+        if (sampleCount < 30) {
+          sampleSum += avg
+          sampleCount++
+          ambientFloor.current = Math.max(8, sampleSum / sampleCount)
         }
 
-        // Speech threshold is dynamically adapted to ambient room noise
-        const dynamicThreshold = Math.max(14, ambientNoiseFloor.current + 8)
+        const speechThreshold = Math.max(14, ambientFloor.current + 8)
 
-        if (!isAiBusy.current && isRecording.current) {
-          if (avg > dynamicThreshold) {
+        // VAD Trigger
+        if (!isAiBusy.current && isRecording.current && !isMutedRef.current) {
+          if (avg > speechThreshold) {
             speechFrameCount.current += 1
             if (speechFrameCount.current >= 2) {
               isUserSpeaking.current = true
-              clearSilenceTimer()
+              clearTimers()
             }
           } else {
             speechFrameCount.current = 0
             if (isUserSpeaking.current && !silenceTimer.current) {
-              // 1.25s silence after speaking -> trigger auto-send
+              // 1.25s silence after speaking -> auto-send
               silenceTimer.current = setTimeout(() => {
                 silenceTimer.current = null
                 if (!isAiBusy.current && isRecording.current && isMounted.current) {
-                  stopRecording()
+                  stopRecordingSession()
                 }
               }, 1250)
             }
           }
         }
 
-        animFrame.current = requestAnimationFrame(tick)
+        animFrameId.current = requestAnimationFrame(updateAudioLoop)
       }
 
-      animFrame.current = requestAnimationFrame(tick)
+      animFrameId.current = requestAnimationFrame(updateAudioLoop)
 
       setTimeout(() => {
-        if (isMounted.current) startListening()
+        if (isMounted.current) startListeningSession()
       }, 350)
     } catch (err: any) {
-      console.error("Mic init failed:", err)
+      console.error("Mic initialization failed:", err)
       if (isMounted.current) {
-        setCallState("error")
+        setPhase("error")
         setErrorMsg(
           err?.name === "NotAllowedError"
             ? "Izin mikrofon ditolak. Buka pengaturan browser dan izinkan mikrofon."
-            : err?.message || "Gagal mengakses mikrofon."
+            : err?.message || "Gagal mengakses mikrofon perangkat."
         )
       }
     }
-  }, [startListening, stopRecording])
+  }, [startListeningSession, stopRecordingSession])
 
-  // ── 6. Lifecycle ──────────────────────────────────────────────────────────
+  // ── 7. Canvas Liquid Fluid Orb Renderer (ChatGPT / Gemini Live Style) ─────
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    let animationId: number
+
+    const render = () => {
+      const width = (canvas.width = canvas.offsetWidth * window.devicePixelRatio)
+      const height = (canvas.height = canvas.offsetHeight * window.devicePixelRatio)
+      ctx.clearRect(0, 0, width, height)
+
+      const centerX = width / 2
+      const centerY = height / 2
+      const baseRadius = Math.min(width, height) * 0.24
+      const volume = liveAvgVolume.current || 0
+
+      morphPhaseRef.current += 0.035
+
+      // Color Schemes based on Phase
+      let colorPrimary = "rgba(244, 63, 94, 0.9)" // Rose
+      let colorSecondary = "rgba(225, 29, 72, 0.6)"
+      let colorGlow = "rgba(244, 63, 94, 0.45)"
+      let points = 12
+      let dynamicScale = 1.0
+
+      if (phase === "listening") {
+        if (isUserSpeaking.current) {
+          colorPrimary = "rgba(251, 113, 133, 0.95)"
+          colorSecondary = "rgba(244, 63, 94, 0.7)"
+          colorGlow = "rgba(244, 63, 94, 0.55)"
+          dynamicScale = 1.0 + Math.min(0.35, volume / 100)
+        } else {
+          colorPrimary = "rgba(255, 255, 255, 0.9)"
+          colorSecondary = "rgba(229, 231, 235, 0.6)"
+          colorGlow = "rgba(255, 255, 255, 0.3)"
+          dynamicScale = 1.0 + Math.sin(morphPhaseRef.current * 1.5) * 0.04
+        }
+      } else if (phase === "thinking") {
+        colorPrimary = "rgba(245, 158, 11, 0.95)" // Amber
+        colorSecondary = "rgba(217, 119, 6, 0.7)"
+        colorGlow = "rgba(245, 158, 11, 0.5)"
+        dynamicScale = 1.08 + Math.sin(morphPhaseRef.current * 3.5) * 0.06
+        points = 8
+      } else if (phase === "speaking") {
+        colorPrimary = "rgba(244, 63, 94, 1.0)" // Radiant Crimson
+        colorSecondary = "rgba(236, 72, 153, 0.85)"
+        colorGlow = "rgba(244, 63, 94, 0.75)"
+        dynamicScale = 1.15 + Math.min(0.3, volume / 120)
+        points = 16
+      } else if (phase === "error") {
+        colorPrimary = "rgba(156, 163, 175, 0.7)"
+        colorSecondary = "rgba(107, 114, 128, 0.5)"
+        colorGlow = "rgba(107, 114, 128, 0.2)"
+        dynamicScale = 0.92
+      }
+
+      // Draw Ambient Radiant Glow Halo
+      const gradient = ctx.createRadialGradient(
+        centerX,
+        centerY,
+        baseRadius * 0.5,
+        centerX,
+        centerY,
+        baseRadius * dynamicScale * 2.2
+      )
+      gradient.addColorStop(0, colorGlow)
+      gradient.addColorStop(0.5, colorGlow.replace("0.45", "0.15").replace("0.55", "0.2").replace("0.75", "0.3"))
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0)")
+
+      ctx.fillStyle = gradient
+      ctx.beginPath()
+      ctx.arc(centerX, centerY, baseRadius * dynamicScale * 2.2, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Draw Fluid Organic Orb Geometry
+      ctx.save()
+      ctx.beginPath()
+
+      const freqData = liveAudioData.current
+      for (let i = 0; i < points; i++) {
+        const angle = (i / points) * Math.PI * 2
+        let freqOffset = 0
+        if (freqData && freqData.length > 0) {
+          const sampleIdx = (i * 3) % freqData.length
+          freqOffset = (freqData[sampleIdx] / 255) * (baseRadius * 0.22)
+        }
+
+        const wave =
+          Math.sin(angle * 3 + morphPhaseRef.current * 2) * (baseRadius * 0.06) +
+          Math.cos(angle * 2 - morphPhaseRef.current * 1.5) * (baseRadius * 0.04)
+
+        const r = baseRadius * dynamicScale + wave + freqOffset
+        const x = centerX + Math.cos(angle) * r
+        const y = centerY + Math.sin(angle) * r
+
+        if (i === 0) {
+          ctx.moveTo(x, y)
+        } else {
+          ctx.lineTo(x, y)
+        }
+      }
+      ctx.closePath()
+
+      // Liquid Core Gradient
+      const coreGradient = ctx.createLinearGradient(
+        centerX - baseRadius,
+        centerY - baseRadius,
+        centerX + baseRadius,
+        centerY + baseRadius
+      )
+      coreGradient.addColorStop(0, colorPrimary)
+      coreGradient.addColorStop(1, colorSecondary)
+
+      ctx.fillStyle = coreGradient
+      ctx.shadowColor = colorPrimary
+      ctx.shadowBlur = 40
+      ctx.fill()
+      ctx.restore()
+
+      // Specular Light Glare Accent
+      ctx.save()
+      ctx.beginPath()
+      ctx.ellipse(
+        centerX - baseRadius * 0.35,
+        centerY - baseRadius * 0.35,
+        baseRadius * 0.22,
+        baseRadius * 0.12,
+        -Math.PI / 4,
+        0,
+        Math.PI * 2
+      )
+      ctx.fillStyle = "rgba(255, 255, 255, 0.45)"
+      ctx.fill()
+      ctx.restore()
+
+      animationId = requestAnimationFrame(render)
+    }
+
+    render()
+
+    return () => {
+      cancelAnimationFrame(animationId)
+    }
+  }, [phase])
+
+  // ── 8. Lifecycle Setup & Cleanup ──────────────────────────────────────────
   useEffect(() => {
     isMounted.current = true
     isAiBusy.current = false
     isRecording.current = false
 
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-    const ctx = new AudioCtx()
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    const ctx = new AudioContextClass()
     audioCtx.current = ctx
 
     if ("speechSynthesis" in window) {
       try {
-        const u = new SpeechSynthesisUtterance(""); u.volume = 0
+        const u = new SpeechSynthesisUtterance("")
+        u.volume = 0
         window.speechSynthesis.speak(u)
         window.speechSynthesis.getVoices()
       } catch {}
     }
 
-    initStream()
+    initializeAudioStream()
 
     return () => {
       isMounted.current = false
       isAiBusy.current = true
       isRecording.current = false
 
-      if (animFrame.current) cancelAnimationFrame(animFrame.current)
-      clearSilenceTimer()
-      clearWatchdog()
+      if (animFrameId.current) cancelAnimationFrame(animFrameId.current)
+      clearTimers()
 
       if (currentAudioSource.current) {
-        try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch {}
+        try {
+          currentAudioSource.current.stop()
+          currentAudioSource.current.disconnect()
+        } catch {}
         currentAudioSource.current = null
       }
 
@@ -393,176 +643,203 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         recorder.current.ondataavailable = null
         recorder.current.onstop = null
         if (recorder.current.state === "recording") {
-          try { recorder.current.stop() } catch {}
+          try {
+            recorder.current.stop()
+          } catch {}
         }
         recorder.current = null
       }
 
       if (mediaStream.current) {
-        mediaStream.current.getTracks().forEach((t) => t.stop())
+        mediaStream.current.getTracks().forEach((track) => track.stop())
         mediaStream.current = null
       }
 
       if (ctx.state !== "closed") {
-        try { ctx.close() } catch {}
+        try {
+          ctx.close()
+        } catch {}
       }
       audioCtx.current = null
 
-      if ("speechSynthesis" in window) {
-        try { window.speechSynthesis.cancel() } catch {}
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        try {
+          window.speechSynthesis.cancel()
+        } catch {}
       }
     }
-  }, [initStream])
+  }, [initializeAudioStream])
 
-  // ── 7. Orb tap — interrupt or manual send ────────────────────────────────
-  const handleOrbTap = () => {
-    if (callState === "speaking") {
-      clearWatchdog()
-      if (currentAudioSource.current) {
-        try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch {}
-        currentAudioSource.current = null
-      }
-      if ("speechSynthesis" in window) { try { window.speechSynthesis.cancel() } catch {} }
-      isAiBusy.current = false
-      setCallState("listening")
-      startListening()
-    } else if (callState === "listening") {
-      isUserSpeaking.current = true
-      stopRecording()
+  // ── 9. Toggle Mic Mute ────────────────────────────────────────────────────
+  const toggleMute = () => {
+    const newMuted = !isMuted
+    setIsMuted(newMuted)
+    if (mediaStream.current) {
+      mediaStream.current.getAudioTracks().forEach((t) => {
+        t.enabled = !newMuted
+      })
     }
   }
 
-  // ── 8. Dynamic orb styles ─────────────────────────────────────────────────
-  const getOrbStyles = () => {
-    const vScale = callState === "listening" ? 1.0 + Math.min(0.2, liveVolume / 120) : 1.0
-    switch (callState) {
-      case "listening":
-        return {
-          background: "linear-gradient(135deg, #FFFFFF, #E5E7EB)",
-          boxShadow: `0 0 ${36 + liveVolume * 0.5}px rgba(255,255,255,${0.4 + liveVolume / 200})`,
-          transform: `scale(${vScale})`,
-          transition: "transform 0.08s ease, box-shadow 0.08s ease",
-        }
-      case "thinking":
-        return {
-          background: "linear-gradient(135deg, #F59E0B, #D97706)",
-          boxShadow: "0 0 50px rgba(245,158,11,0.5)",
-          transform: "scale(1.1)",
-          transition: "all 0.3s ease",
-        }
-      case "speaking":
-        return {
-          background: "linear-gradient(135deg, #FF4D6D, #E11D48)",
-          boxShadow: "0 0 60px rgba(225,29,72,0.65)",
-          transform: "scale(1.18)",
-          transition: "all 0.3s ease",
-        }
-      case "error":
-        return {
-          background: "linear-gradient(135deg, #6B7280, #374151)",
-          boxShadow: "0 0 30px rgba(107,114,128,0.3)",
-          transform: "scale(0.9)",
-          transition: "all 0.3s ease",
-        }
-      default:
-        return {
-          background: "linear-gradient(135deg, #E11D48, #991B1B)",
-          boxShadow: "0 0 40px rgba(225,29,72,0.4)",
-          transform: "scale(0.92)",
-          transition: "all 0.3s ease",
-        }
+  // ── 10. Orb Tap Action (Interrupt AI or Force Send) ───────────────────────
+  const handleOrbClick = () => {
+    if (phase === "speaking") {
+      interruptAI()
+      setPhase("listening")
+      startListeningSession()
+    } else if (phase === "listening" && isUserSpeaking.current) {
+      stopRecordingSession()
     }
   }
 
-  const stateLabel =
-    callState === "connecting" ? "Menghubungkan mikrofon..." :
-    callState === "listening"  ? (isUserSpeaking.current ? "Mendengarkan ucapanmu..." : "Silakan bicara (ID/EN/Campuran)...") :
-    callState === "thinking"   ? "FYY-AI sedang berpikir..." :
-    callState === "speaking"   ? "FYY-AI sedang berbicara..." :
-    "Gagal mengakses mikrofon"
+  // ── 11. Status Label ──────────────────────────────────────────────────────
+  const statusLabel =
+    phase === "connecting"
+      ? "Menghubungkan mikrofon..."
+      : isMuted
+      ? "Mikrofon dibisukan (Muted)"
+      : phase === "listening"
+      ? isUserSpeaking.current
+        ? "Mendengarkan ucapanmu..."
+        : "Silakan bicara (ID/EN)..."
+      : phase === "thinking"
+      ? "FYY-AI sedang memproses..."
+      : phase === "speaking"
+      ? "FYY-AI sedang berbicara..."
+      : "Gagal mengakses mikrofon"
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-between p-6 sm:p-12 animate-fade-in"
-      style={{ background: "rgba(8,8,10,0.98)", backdropFilter: "blur(32px)" }}
+      className="fixed inset-0 z-[200] flex flex-col justify-between items-center select-none overflow-hidden animate-fade-in"
+      style={{
+        background: "radial-gradient(circle at center, #111118 0%, #060608 100%)",
+      }}
     >
-      {/* Header */}
-      <div className="w-full text-center mt-6 space-y-2">
-        <h2 className="text-sm font-bold text-white uppercase tracking-widest flex items-center justify-center gap-2">
-          <Sparkles size={14} className="text-rose-400" />
-          FYY-AI Live Voice Call
-        </h2>
-        <p className={`text-xs font-semibold tracking-wider ${callState === "error" ? "text-yellow-400" : "text-rose-400 animate-pulse-slow"}`}>
-          {stateLabel}
-        </p>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-full text-[10px] text-gray-400 font-medium">
-          {callState === "listening" && <Mic size={11} className="text-white animate-bounce" />}
-          {callState === "speaking"  && <Volume2 size={11} className="text-rose-400 animate-pulse" />}
-          <span>Peredam Suara Aktif · Multi-Bahasa (ID/EN) · Groq Whisper</span>
+      {/* ── TOP HEADER BAR ── */}
+      <div className="w-full max-w-xl flex items-center justify-between px-6 pt-8 sm:pt-10 z-20">
+        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-md">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              phase === "speaking"
+                ? "bg-rose-500 animate-ping"
+                : phase === "thinking"
+                ? "bg-amber-400 animate-pulse"
+                : "bg-emerald-400"
+            }`}
+          />
+          <span className="text-[11px] font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
+            <Sparkles size={12} className="text-rose-400" />
+            FYY-AI Live
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSubtitles((prev) => !prev)}
+            className={`p-2.5 rounded-full border transition-all ${
+              showSubtitles
+                ? "bg-white/10 border-white/20 text-white"
+                : "bg-white/[0.03] border-white/5 text-gray-500 hover:text-gray-300"
+            }`}
+            title="Toggle Teks / Subtitle"
+          >
+            <MessageSquare size={16} />
+          </button>
         </div>
       </div>
 
-      {/* Center Orb */}
-      <div className="relative flex items-center justify-center flex-1 w-full max-w-md">
-        {callState !== "connecting" && callState !== "error" && (
-          <>
-            <div
-              className="absolute w-40 h-40 sm:w-56 sm:h-56 rounded-full border-2 border-rose-500/30 animate-ripple"
-              style={{ animationDuration: callState === "speaking" ? "1.5s" : "2.8s" }}
-            />
-            <div
-              className="absolute w-52 h-52 sm:w-72 sm:h-72 rounded-full border border-rose-500/20 animate-ripple"
-              style={{ animationDuration: callState === "speaking" ? "2.0s" : "3.6s", animationDelay: "0.4s" }}
-            />
-          </>
-        )}
+      {/* ── STATUS TEXT PILL ── */}
+      <div className="text-center mt-3 z-20 space-y-1">
+        <p
+          className={`text-xs font-semibold tracking-wider ${
+            phase === "error"
+              ? "text-yellow-400"
+              : isMuted
+              ? "text-gray-400"
+              : "text-rose-400 animate-pulse-slow"
+          }`}
+        >
+          {statusLabel}
+        </p>
+        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">
+          Full-Duplex · Noise Filter · Groq Whisper
+        </p>
+      </div>
 
+      {/* ── CENTER CANVAS FLUID ORB (ChatGPT / Gemini Live Style) ── */}
+      <div className="relative flex-1 w-full max-w-lg flex items-center justify-center z-10">
+        <canvas
+          ref={canvasRef}
+          onClick={handleOrbClick}
+          className="w-72 h-72 sm:w-96 sm:h-96 cursor-pointer active:scale-95 transition-transform duration-150"
+          title={
+            phase === "speaking"
+              ? "Ketuk untuk menyela (Interrupt)"
+              : "Ketuk untuk mengirim rekaman"
+          }
+        />
+      </div>
+
+      {/* ── FLOATING LIVE TRANSCRIPT (Optional Subtitles Drawer) ── */}
+      {showSubtitles && (
+        <div className="w-full max-w-lg px-6 mb-4 min-h-[72px] flex flex-col items-center justify-center text-center z-20">
+          {phase === "error" ? (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-yellow-300 text-xs leading-relaxed">{errorMsg}</p>
+              <button
+                type="button"
+                onClick={initializeAudioStream}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-full transition-all active:scale-95 shadow-lg shadow-rose-600/30"
+              >
+                <RefreshCw size={12} /> Coba Hubungkan Ulang
+              </button>
+            </div>
+          ) : phase === "listening" && userTranscript ? (
+            <p className="text-gray-300 text-sm italic animate-fade-in line-clamp-2 px-4 py-2 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md">
+              "{userTranscript}..."
+            </p>
+          ) : phase === "speaking" && aiTranscript ? (
+            <div className="space-y-1 animate-fade-in px-4 py-2 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md">
+              <p className="text-white text-sm font-medium leading-relaxed line-clamp-3">
+                {aiTranscript}
+              </p>
+              <p className="text-[9px] text-gray-400 uppercase tracking-widest font-black flex items-center justify-center gap-1">
+                <Volume2 size={10} className="text-rose-400 animate-pulse" /> Ketuk bola untuk menyela
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-xs tracking-wide">
+              {isMuted ? "Mikrofon sedang dibisukan." : "Bicara bebas dalam Bahasa Indonesia atau Inggris..."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── BOTTOM DOCK CONTROLS (ChatGPT / Gemini Live Style) ── */}
+      <div className="w-full max-w-sm flex items-center justify-center gap-6 pb-8 sm:pb-12 z-20">
+        {/* Mute Button */}
         <button
           type="button"
-          onClick={handleOrbTap}
-          style={getOrbStyles()}
-          className="relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center cursor-pointer select-none overflow-hidden active:scale-95"
-          title={callState === "speaking" ? "Ketuk untuk menyela" : "Ketuk untuk kirim segera"}
+          onClick={toggleMute}
+          className={`p-4 rounded-full border transition-all duration-200 active:scale-90 ${
+            isMuted
+              ? "bg-red-500/20 border-red-500/40 text-red-400"
+              : "bg-white/[0.06] border-white/10 text-white hover:bg-white/10"
+          }`}
+          title={isMuted ? "Nyalakan Mikrofon" : "Bisukan Mikrofon (Mute)"}
         >
-          <div className={`w-3/4 h-3/4 rounded-full bg-white/20 blur-md pointer-events-none ${callState === "speaking" ? "animate-pulse" : ""}`} />
-          <div className="absolute top-2.5 left-5 w-10 h-5 bg-white/40 rounded-full rotate-[-45deg] blur-[2px] opacity-70 pointer-events-none" />
+          {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
         </button>
-      </div>
 
-      {/* Subtitles / Error */}
-      <div className="w-full max-w-md min-h-[90px] mb-4 flex flex-col items-center justify-center text-center px-4 gap-3">
-        {callState === "error" && (
-          <>
-            <p className="text-yellow-300 text-xs leading-relaxed">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={initStream}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-full transition-all active:scale-95"
-            >
-              <RefreshCw size={12} /> Coba Lagi
-            </button>
-          </>
-        )}
-        {callState === "listening" && userTranscript && (
-          <p className="text-gray-300 text-sm italic animate-fade-in line-clamp-3">"{userTranscript}..."</p>
-        )}
-        {callState === "speaking" && aiTranscript && (
-          <div className="space-y-1 animate-fade-in">
-            <p className="text-white text-sm font-semibold leading-relaxed line-clamp-3">{aiTranscript}</p>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Ketuk bola untuk menyela</p>
-          </div>
-        )}
-      </div>
-
-      {/* End Call */}
-      <div className="w-full flex justify-center mb-6">
+        {/* End Call Button */}
         <button
           type="button"
           onClick={onEndCall}
-          className="bg-red-600 hover:bg-red-700 text-white p-5 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
-          title="Tutup Panggilan"
+          className="p-5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl shadow-red-600/50 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center"
+          title="Akhiri Panggilan"
         >
-          <PhoneOff size={26} />
+          <PhoneOff size={28} />
         </button>
       </div>
     </div>
