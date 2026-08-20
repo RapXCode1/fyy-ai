@@ -6,58 +6,93 @@ export interface ModelInfo {
   badge?: string
 }
 
-// ✅ Model IDs yang 100% aktif dan didukung di Groq API
+// 🌟 5 MODEL UTAMA CORE AI CHAT FYY-AI
 export const OFFICIAL_MODELS: ModelInfo[] = [
   {
-    id: "openai/gpt-oss-120b",
-    name: "FYY-GPT-OSS 120B (PRO)",
-    description: "Model reasoning open-source paling mutakhir dengan penalaran tingkat tinggi.",
+    id: "llama-3.3-70b-versatile",
+    name: "FYY-Llama 3.3 (PRO)",
+    description: "Model Flagship untuk penalaran kompleks, analisis data mendalam, dan pemrograman.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "PRO",
   },
   {
-    id: "openai/gpt-oss-20b",
-    name: "FYY-GPT-OSS 20B (Fast)",
-    description: "Kecepatan inferensi instan dengan pemahaman instruksi yang sangat responsif.",
+    id: "meta-llama/llama-4-scout-17b-16e-instruct",
+    name: "FYY-Llama 4 Scout",
+    description: "Model penalaran generasi terbaru dengan dukungan pemrosesan multimodal mutakhir.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
-    badge: "FAST",
+    badge: "NEW",
   },
   {
-    id: "llama-3.3-70b-versatile",
-    name: "FYY-Llama 3.3 70B",
-    description: "Performa tinggi untuk pemrosesan teks, coding, dan analisis mendalam.",
+    id: "openai/gpt-oss-120b",
+    name: "FYY-GPT-OSS 120B",
+    description: "Model open-intelligence performa elit untuk tugas analitis dan sintesis data tingkat tinggi.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "ELITE",
   },
   {
     id: "qwen/qwen3.6-27b",
-    name: "FYY-Qwen 3.6 27B",
-    description: "Keunggulan multibahasa dan matematika dengan kecepatan inferensi tinggi.",
+    name: "FYY-Qwen 3 32B",
+    description: "Model logika matematika dan keunggulan multibahasa dengan kecepatan inferensi tinggi.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
-    badge: "NEW",
+    badge: "FAST",
   },
   {
     id: "llama-3.1-8b-instant",
     name: "FYY-Llama 3.1 Fast",
-    description: "Respons cepat untuk percakapan harian.",
+    description: "Model inferensi kilat berlatensi ultra-rendah untuk dialog harian instan.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "LITE",
   },
 ]
 
-export const DEFAULT_MODEL_ID = "openai/gpt-oss-120b"
-export const FALLBACK_MODEL_ID = "openai/gpt-oss-20b"
+// 👁️ 1 MODEL VISION
+export const VISION_MODEL = {
+  id: "fyy-vision",
+  name: "FYY-Vision Multimodal",
+  description: "Pemrosesan gambar cerdas, OCR dokumen, dan analisis visual mendalam.",
+}
+
+// 🎨 4 MODEL IMAGE GENERATOR (FYY-DIFFUSION)
+export const IMAGE_GENERATOR_MODELS = [
+  {
+    id: "flux",
+    modelId: "black-forest-labs/FLUX.1-schnell",
+    name: "FYY-FLUX.1 Schnell",
+    description: "Generasi gambar artistik ultra-cepat dan beresolusi tinggi.",
+  },
+  {
+    id: "flux-realism",
+    modelId: "stabilityai/stable-diffusion-xl-base-1.0",
+    name: "FYY-Realistic XL",
+    description: "Generasi foto hiper-realistis dengan detail tekstur dan pencahayaan nyata.",
+  },
+  {
+    id: "flux-pro",
+    modelId: "black-forest-labs/FLUX.1-dev",
+    name: "FYY-FLUX Pro",
+    description: "Generasi visual kualitas studio profesional dengan komposisi presisi tinggi.",
+  },
+  {
+    id: "turbo",
+    modelId: "black-forest-labs/FLUX.1-schnell",
+    name: "FYY-Turbo Diffusion",
+    description: "Generasi visual kilat responsif untuk eksplorasi konsep instan.",
+  },
+]
+
+export const DEFAULT_MODEL_ID = "llama-3.3-70b-versatile"
+export const FALLBACK_MODEL_ID = "openai/gpt-oss-120b"
 
 export const MODEL_NAME_MAP: Record<string, string> = {
-  "openai/gpt-oss-120b": "FYY-GPT-OSS 120B (PRO)",
+  "llama-3.3-70b-versatile": "FYY-Llama 3.3 (PRO)",
+  "meta-llama/llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
+  "llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
+  "openai/gpt-oss-120b": "FYY-GPT-OSS 120B",
   "openai/gpt-oss-20b": "FYY-GPT-OSS 20B (Fast)",
-  "qwen/qwen3.6-27b": "FYY-Qwen 3.6 27B",
+  "qwen/qwen3.6-27b": "FYY-Qwen 3 32B",
   "qwen/qwen3-32b": "FYY-Qwen 3 32B",
   "qwen-qwen3-32b": "FYY-Qwen 3 32B",
-  "llama-3.3-70b-versatile": "FYY-Llama 3.3 70B",
   "llama-3.1-8b-instant": "FYY-Llama 3.1 Fast",
-  "llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
-  "meta-llama/llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
   "gemma2-9b-it": "FYY-Gemma 9B",
 }
 
@@ -95,7 +130,7 @@ export function formatBrandedError(rawError: string, modelId?: string): string {
     const currentModelName = modelId && MODEL_NAME_MAP[modelId]
       ? `**${MODEL_NAME_MAP[modelId]}**`
       : "Model yang dipilih"
-    return `⚠️ ${currentModelName} tidak dapat diakses atau API Key Groq belum valid. Silakan periksa kunci API di menu **Settings (⚙️)** atau Dashboard Vercel.`
+    return `⚠️ ${currentModelName} sedang dalam pemeliharaan server **FYY-GROQ SYSTEM INTELLIGENCE**. Silakan beralih ke model lain di menu Model.`
   }
 
   if (text.toLowerCase().includes("rate limit") || text.includes("429")) {

@@ -183,34 +183,40 @@ export default function DocsPage() {
                 <div className="space-y-4">
                   {[
                     {
-                      name: "FYY-Llama 3.3 (Complete)",
+                      name: "FYY-Llama 3.3 (PRO)",
                       id: "llama-3.3-70b-versatile",
-                      badge: "Flagship",
-                      desc: "Model serba bisa 70B parameter dengan performa puncak untuk analisis kode kompleks, penulisan mendalam, dan pemecahan masalah multidisiplin.",
+                      badge: "Flagship PRO",
+                      desc: "Model Flagship untuk penalaran logika kompleks, analisis data mendalam, dan penulisan kode pemrograman profesional.",
                     },
                     {
                       name: "FYY-Llama 4 Scout",
                       id: "meta-llama/llama-4-scout-17b-16e-instruct",
-                      badge: "Next-Gen Vision",
-                      desc: "Model generasi mutakhir dengan kapabilitas penalaran logika tinggi dan dukungan visi multimodal untuk mendeteksi gambar serta lampiran visual.",
+                      badge: "Next-Gen AI",
+                      desc: "Model generasi mutakhir berarsitektur penalaran cerdas dengan dukungan pemrosesan multimodal mutakhir.",
                     },
                     {
                       name: "FYY-GPT-OSS 120B",
                       id: "openai/gpt-oss-120b",
                       badge: "Ultra Reasoning",
-                      desc: "Model skala raksasa berkapasitas 120B untuk riset ilmiah, coding arsitektur tingkat lanjut, dan analisis instruksi bertingkat.",
+                      desc: "Model open-intelligence skala elit untuk riset analitis, sintesis data komprehensif, dan penalaran tingkat tinggi.",
                     },
                     {
                       name: "FYY-Qwen 3 32B",
-                      id: "qwen/qwen3-32b",
+                      id: "qwen/qwen3.6-27b",
                       badge: "Multilingual Pro",
-                      desc: "Model dengan kemampuan bahasa dan matematika luar biasa, sangat akurat untuk terjemahan kontekstual dan logika komputasi.",
+                      desc: "Model logika matematika superior dengan keunggulan penalaran sains dan akurasi multibahasa responsif.",
                     },
                     {
-                      name: "Llama 3.1 8B Instant (Failover Guard)",
+                      name: "FYY-Llama 3.1 Fast",
                       id: "llama-3.1-8b-instant",
-                      badge: "Auto-Fallback",
-                      desc: "Mesin pelindung otomatis yang langsung mengambil alih percakapan tanpa jeda jika API mengalami lonjakan trafik / rate-limit.",
+                      badge: "Ultra Fast",
+                      desc: "Model inferensi kilat berlatensi ultra-rendah untuk percakapan harian dan respon instan.",
+                    },
+                    {
+                      name: "FYY-Vision Multimodal",
+                      id: "fyy-vision",
+                      badge: "Vision Engine",
+                      desc: "Model inspeksi visual untuk pemindaian OCR dokumen, pengenalan teks visual, analisis grafik/bagan, dan interpretasi gambar.",
                     },
                   ].map((m, idx) => (
                     <div key={idx} className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-colors space-y-2">
@@ -296,19 +302,23 @@ export default function DocsPage() {
                   </div>
 
                   <div className="p-5 rounded-2xl bg-white/[0.01] border border-white/5 space-y-3">
-                    <h3 className="text-sm font-bold text-white">Model Difusi yang Didukung:</h3>
+                    <h3 className="text-sm font-bold text-white">4 Model Generator Difusi (FYY-Diffusion):</h3>
                     <ul className="space-y-2 text-xs text-gray-400">
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        <strong>FLUX.1-schnell</strong> — Sangat cepat untuk generasi kilat dengan detail memukau.
+                        <strong>FYY-FLUX.1 Schnell</strong> — Generator visual artistik ultra-cepat dengan estetika sinematik modern.
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        <strong>FLUX.1-dev</strong> — Model flagship untuk kualitas gambar fotorealistik dan komposisi kompleks.
+                        <strong>FYY-Realistic XL</strong> — Generator foto hiper-realistis dengan detail tekstur kulit nyata dan pencahayaan alami.
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                        <strong>Stable Diffusion XL (SDXL)</strong> — Pilihan terbaik untuk anime, lukisan minyak, dan poster art.
+                        <strong>FYY-FLUX Pro</strong> — Generator visual kualitas studio profesional untuk rendering komposisi karya komersial.
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        <strong>FYY-Turbo Diffusion</strong> — Generator gambar instan responsif untuk visualisasi konsep kilat.
                       </li>
                     </ul>
                   </div>

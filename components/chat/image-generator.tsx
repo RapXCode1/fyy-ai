@@ -28,31 +28,31 @@ const imageModels: ImageModel[] = [
   {
     id: "flux",
     modelId: "flux",
-    name: "Fyy-AI Flux",
-    description: "High quality, versatile images",
-    recommended: true
+    name: "FYY-FLUX.1 Schnell",
+    description: "Generasi gambar artistik ultra-cepat dan beresolusi tinggi",
+    recommended: true,
   },
   {
     id: "flux-realism",
     modelId: "flux-realism",
-    name: "Fyy-AI Realistic",
-    description: "Photorealistic images",
-    recommended: false
+    name: "FYY-Realistic XL",
+    description: "Generasi foto hiper-realistis dengan detail tekstur nyata",
+    recommended: false,
   },
   {
     id: "flux-pro",
     modelId: "flux-pro",
-    name: "Fyy-AI Pro",
-    description: "Professional quality images",
-    recommended: false
+    name: "FYY-FLUX Pro",
+    description: "Generasi visual kualitas studio profesional presisi tinggi",
+    recommended: false,
   },
   {
     id: "turbo",
     modelId: "turbo",
-    name: "Fyy-AI Turbo",
-    description: "Fast generation, good quality",
-    recommended: false
-  }
+    name: "FYY-Turbo Diffusion",
+    description: "Generasi visual kilat responsif untuk eksplorasi konsep",
+    recommended: false,
+  },
 ]
 
 export default function ImageGenerator({ onClose, onGuestLimit }: ImageGeneratorProps) {
