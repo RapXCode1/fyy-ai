@@ -654,15 +654,9 @@ export default function ChatPage() {
         payloadMessages = allMessages.slice(-10)
       }
 
-      const customKey = typeof window !== "undefined" ? (localStorage.getItem("fyy_custom_groq_key") || "").trim() : ""
-      const requestHeaders: Record<string, string> = { "Content-Type": "application/json" }
-      if (customKey) {
-        requestHeaders["x-groq-key"] = customKey
-      }
-
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: requestHeaders,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: payloadMessages.map((m) => ({
             role: m.role,

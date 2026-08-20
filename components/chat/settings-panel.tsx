@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Save, RotateCcw, Settings, Sliders, Type, Palette, Info, Key } from "lucide-react"
+import { X, Save, RotateCcw, Settings, Sliders, Type, Palette, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SettingsPanelProps {
@@ -18,7 +18,6 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
   const [topP, setTopP] = useState(0.9)
   const [fontFamily, setFontFamily] = useState("Inter")
   const [themeStyle, setThemeStyle] = useState("basic")
-  const [customApiKey, setCustomApiKey] = useState("")
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -34,10 +33,6 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
         setFontFamily(loadedFont)
         const loadedTheme = data.themeStyle || "basic"
         setThemeStyle(loadedTheme)
-        if (typeof window !== "undefined") {
-          const storedKey = localStorage.getItem("fyy_custom_groq_key") || ""
-          setCustomApiKey(storedKey)
-        }
         if (onFontChange) {
           onFontChange(loadedFont)
         }
@@ -68,15 +63,6 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
       })
 
       const data = await response.json()
-      
-      if (typeof window !== "undefined") {
-        if (customApiKey.trim()) {
-          localStorage.setItem("fyy_custom_groq_key", customApiKey.trim())
-        } else {
-          localStorage.removeItem("fyy_custom_groq_key")
-        }
-      }
-
       window.dispatchEvent(new CustomEvent("fyy-theme-change", { detail: themeStyle }))
       onSave(data.settings)
       onClose()
@@ -97,10 +83,6 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
     setTopP(0.9)
     setFontFamily("Inter")
     setThemeStyle("basic")
-    setCustomApiKey("")
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("fyy_custom_groq_key")
-    }
   }
 
   if (!isOpen) return null
@@ -270,31 +252,6 @@ Saya dirancang untuk memberikan solusi cerdas, kreatif, dan sangat adaptif denga
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Section 5: Custom Groq API Key */}
-            <div className="space-y-2 bg-[var(--fyf-surface)] border border-[var(--fyf-border)] rounded-2xl p-4">
-              <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Key size={12} className="text-rose-400" />
-                  Custom Groq API Key (Opsional)
-                </span>
-                {customApiKey.trim() && (
-                  <span className="text-[9px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                    Aktif
-                  </span>
-                )}
-              </label>
-              <p className="text-[11px] text-[var(--fyf-text-muted)] leading-relaxed">
-                Jika server Vercel belum memiliki key, kamu bisa tempel kunci <code className="text-rose-400">gsk_...</code> langsung di sini. Kunci disimpan aman di browser lokalmu.
-              </p>
-              <input
-                type="password"
-                value={customApiKey}
-                onChange={(e) => setCustomApiKey(e.target.value)}
-                placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx..."
-                className="w-full px-3 py-2.5 bg-black/40 border border-[var(--fyf-border)] rounded-xl text-xs text-[var(--fyf-text)] placeholder-[var(--fyf-text-muted)] outline-none focus:border-red-500/50 transition-colors font-mono"
-              />
             </div>
 
             {/* Advice notice */}
