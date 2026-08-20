@@ -9,36 +9,56 @@ export interface ModelInfo {
 // ✅ Model IDs yang 100% aktif dan didukung di Groq API
 export const OFFICIAL_MODELS: ModelInfo[] = [
   {
-    id: "llama-3.3-70b-versatile",
-    name: "FYY-Llama 3.3 (PRO)",
-    description: "Performa tertinggi untuk pemrosesan teks kompleks, coding, dan analisis mendalam.",
+    id: "openai/gpt-oss-120b",
+    name: "FYY-GPT-OSS 120B (PRO)",
+    description: "Model reasoning open-source paling mutakhir dengan penalaran tingkat tinggi.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "PRO",
   },
   {
-    id: "llama-3.1-8b-instant",
-    name: "FYY-Llama 3.1 Fast",
-    description: "Respons ultra-cepat dengan latensi sangat rendah untuk percakapan harian.",
+    id: "openai/gpt-oss-20b",
+    name: "FYY-GPT-OSS 20B (Fast)",
+    description: "Kecepatan inferensi instan dengan pemahaman instruksi yang sangat responsif.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "FAST",
   },
   {
     id: "llama-3.3-70b-versatile",
-    name: "FYY-Reasoning 70B",
-    description: "Model penalaran mendalam dan pemecahan masalah logika tingkat tinggi.",
+    name: "FYY-Llama 3.3 70B",
+    description: "Performa tinggi untuk pemrosesan teks, coding, dan analisis mendalam.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "ELITE",
   },
+  {
+    id: "qwen/qwen3.6-27b",
+    name: "FYY-Qwen 3.6 27B",
+    description: "Keunggulan multibahasa dan matematika dengan kecepatan inferensi tinggi.",
+    provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
+    badge: "NEW",
+  },
+  {
+    id: "llama-3.1-8b-instant",
+    name: "FYY-Llama 3.1 Fast",
+    description: "Respons cepat untuk percakapan harian.",
+    provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
+    badge: "LITE",
+  },
 ]
 
-export const DEFAULT_MODEL_ID = "llama-3.3-70b-versatile"
-export const FALLBACK_MODEL_ID = "llama-3.1-8b-instant"
+export const DEFAULT_MODEL_ID = "openai/gpt-oss-120b"
+export const FALLBACK_MODEL_ID = "openai/gpt-oss-20b"
 
 export const MODEL_NAME_MAP: Record<string, string> = {
-  "llama-3.3-70b-versatile": "FYY-Llama 3.3 (PRO)",
+  "openai/gpt-oss-120b": "FYY-GPT-OSS 120B (PRO)",
+  "openai/gpt-oss-20b": "FYY-GPT-OSS 20B (Fast)",
+  "qwen/qwen3.6-27b": "FYY-Qwen 3.6 27B",
+  "qwen/qwen3-32b": "FYY-Qwen 3 32B",
+  "qwen-qwen3-32b": "FYY-Qwen 3 32B",
+  "llama-3.3-70b-versatile": "FYY-Llama 3.3 70B",
   "llama-3.1-8b-instant": "FYY-Llama 3.1 Fast",
-  "llama-3.2-11b-vision-preview": "FYY-Vision 11B",
-  "llama-3.2-90b-vision-preview": "FYY-Vision 90B",
+  "llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
+  "meta-llama/llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
+  "gemma2-9b-it": "FYY-Gemma 9B",
 }
 
 export function formatBrandedError(rawError: string, modelId?: string): string {
