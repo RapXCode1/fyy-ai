@@ -20,6 +20,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const isRecording = useRef(false)
   const isUserSpeaking = useRef(false)
   const speechFrameCount = useRef(0)
+  const ambientNoiseFloor = useRef(10) // dynamically calibrated
 
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -53,7 +54,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     if (!clean) { isAiBusy.current = false; onDone(); return }
 
-    // Stop any existing audio
     if (currentAudioSource.current) {
       try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch {}
       currentAudioSource.current = null
@@ -68,9 +68,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (isMounted.current) onDone()
     }
 
-    // Safety watchdog: max 18s per turn
-    watchdog.current = setTimeout(finish, Math.min(18000, Math.max(3500, clean.length * 80)))
-
+    watchdog.current = setTimeout(finish, Math.min(20000, Math.max(3500, clean.length * 80)))
     setCallState("speaking")
 
     const ctx = audioCtx.current
@@ -149,7 +147,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     audioChunks.current = []
 
     const totalSize = chunks.reduce((s, c) => s + c.size, 0)
-    // If user didn't speak or data is too tiny (< 3000 bytes ~0.3s audio), ignore
+    // Audio must have detected speech and be > 3000 bytes (~0.35s)
     if (!wasSpeaking || totalSize < 3000) {
       if (isMounted.current && !isAiBusy.current) startListening()
       return
@@ -172,7 +170,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (!isMounted.current) return
 
       if (!text) {
-        // Ignored or hallucination filtered
+        // Hallucination filtered or silent -> resume listening
         isAiBusy.current = false
         setCallState("listening")
         startListening()
@@ -239,18 +237,25 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }, [sendAudioToSTT])
 
-  // ── 5. Init microphone stream + VAD loop ──────────────────────────────────
+  // ── 5. Init microphone stream + Filter + Dynamic VAD loop ─────────────────
   const initStream = useCallback(async () => {
     setCallState("connecting")
     setErrorMsg("")
 
     try {
+      // 1. Hardware Noise Suppression + Echo Cancellation
       const stream = await Promise.race([
         navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          audio: {
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+            autoGainControl: { ideal: true },
+            channelCount: 1,
+            sampleRate: 48000,
+          },
         }),
         new Promise<never>((_, rej) =>
-          setTimeout(() => rej(new Error("Mic timeout — izin mungkin tertunda")), 6000)
+          setTimeout(() => rej(new Error("Mic timeout — izin tertunda")), 6000)
         ),
       ]) as MediaStream
 
@@ -264,16 +269,33 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       const ctx = audioCtx.current!
       if (ctx.state === "suspended") await ctx.resume()
 
+      // 2. Audio Processing Filter Chain:
+      // High-Pass Filter at 80Hz (cuts air con / rumble / breath pop)
+      const highPass = ctx.createBiquadFilter()
+      highPass.type = "highpass"
+      highPass.frequency.value = 80
+
+      // Low-Pass Filter at 8000Hz (cuts high-frequency hiss / static)
+      const lowPass = ctx.createBiquadFilter()
+      lowPass.type = "lowpass"
+      lowPass.frequency.value = 8000
+
       const an = ctx.createAnalyser()
       an.fftSize = 256
+      an.smoothingTimeConstant = 0.2
       analyser.current = an
 
       const src = ctx.createMediaStreamSource(stream)
-      src.connect(an)
+      src.connect(highPass)
+      highPass.connect(lowPass)
+      lowPass.connect(an)
 
       const buf = new Uint8Array(an.frequencyBinCount)
 
       if (animFrame.current) cancelAnimationFrame(animFrame.current)
+
+      let calibrationSamples = 0
+      let calibrationSum = 0
 
       const tick = () => {
         if (!isMounted.current) return
@@ -281,9 +303,18 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         const avg = buf.reduce((a, b) => a + b, 0) / buf.length
         setLiveVolume(avg)
 
+        // Dynamic noise floor calibration in first 30 frames (~0.5s)
+        if (calibrationSamples < 30) {
+          calibrationSum += avg
+          calibrationSamples++
+          ambientNoiseFloor.current = Math.max(8, calibrationSum / calibrationSamples)
+        }
+
+        // Speech threshold is dynamically adapted to ambient room noise
+        const dynamicThreshold = Math.max(14, ambientNoiseFloor.current + 8)
+
         if (!isAiBusy.current && isRecording.current) {
-          // Speech detection: volume > 15 for 2+ consecutive frames
-          if (avg > 15) {
+          if (avg > dynamicThreshold) {
             speechFrameCount.current += 1
             if (speechFrameCount.current >= 2) {
               isUserSpeaking.current = true
@@ -292,13 +323,13 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           } else {
             speechFrameCount.current = 0
             if (isUserSpeaking.current && !silenceTimer.current) {
-              // 1.3s of silence after speech -> trigger send
+              // 1.25s silence after speaking -> trigger auto-send
               silenceTimer.current = setTimeout(() => {
                 silenceTimer.current = null
                 if (!isAiBusy.current && isRecording.current && isMounted.current) {
                   stopRecording()
                 }
-              }, 1300)
+              }, 1250)
             }
           }
         }
@@ -310,7 +341,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       setTimeout(() => {
         if (isMounted.current) startListening()
-      }, 300)
+      }, 350)
     } catch (err: any) {
       console.error("Mic init failed:", err)
       if (isMounted.current) {
@@ -445,7 +476,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
   const stateLabel =
     callState === "connecting" ? "Menghubungkan mikrofon..." :
-    callState === "listening"  ? (isUserSpeaking.current ? "Mendengarkan ucapanmu..." : "Silakan bicara...") :
+    callState === "listening"  ? (isUserSpeaking.current ? "Mendengarkan ucapanmu..." : "Silakan bicara (ID/EN/Campuran)...") :
     callState === "thinking"   ? "FYY-AI sedang berpikir..." :
     callState === "speaking"   ? "FYY-AI sedang berbicara..." :
     "Gagal mengakses mikrofon"
@@ -467,7 +498,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-full text-[10px] text-gray-400 font-medium">
           {callState === "listening" && <Mic size={11} className="text-white animate-bounce" />}
           {callState === "speaking"  && <Volume2 size={11} className="text-rose-400 animate-pulse" />}
-          <span>Real-Time VAD · Groq Whisper · AudioContext TTS</span>
+          <span>Peredam Suara Aktif · Multi-Bahasa (ID/EN) · Groq Whisper</span>
         </div>
       </div>
 
@@ -491,6 +522,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           onClick={handleOrbTap}
           style={getOrbStyles()}
           className="relative z-10 w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center cursor-pointer select-none overflow-hidden active:scale-95"
+          title={callState === "speaking" ? "Ketuk untuk menyela" : "Ketuk untuk kirim segera"}
         >
           <div className={`w-3/4 h-3/4 rounded-full bg-white/20 blur-md pointer-events-none ${callState === "speaking" ? "animate-pulse" : ""}`} />
           <div className="absolute top-2.5 left-5 w-10 h-5 bg-white/40 rounded-full rotate-[-45deg] blur-[2px] opacity-70 pointer-events-none" />

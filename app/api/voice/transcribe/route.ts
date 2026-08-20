@@ -29,6 +29,8 @@ const WHISPER_HALLUCINATIONS = new Set([
   "bye",
   "sampai jumpa.",
   "sampai jumpa",
+  "goodbye",
+  "goodbye.",
 ])
 
 export async function POST(req: Request) {
@@ -46,17 +48,22 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const audioFile = formData.get("file") as Blob | null
 
-    if (!audioFile || audioFile.size < 2000) {
+    if (!audioFile || audioFile.size < 2500) {
       // Audio is too small to contain actual speech
       return NextResponse.json({ success: true, text: "" })
     }
 
     // Prepare multipart form data for Groq Whisper
     const groqFormData = new FormData()
-    groqFormData.append("file", audioFile, "recording.webm")
+    groqFormData.append("file", audioFile, "speech.webm")
     groqFormData.append("model", "whisper-large-v3-turbo")
-    groqFormData.append("language", "id")
-    groqFormData.append("temperature", "0")
+    // Note: Leaving language unset enables multilingual auto-detection (Indonesian, English, mixed/slang)
+    // Providing a contextual prompt anchors Whisper's vocabulary and eliminates hallucinations:
+    groqFormData.append(
+      "prompt",
+      "Percakapan suara interaktif FYY-AI dalam Bahasa Indonesia santai, gaul, formal, English, atau campuran. Coding, pemrograman, tanya jawab, bantuan AI."
+    )
+    groqFormData.append("temperature", "0.0")
     groqFormData.append("response_format", "json")
 
     const groqResponse = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
@@ -79,9 +86,14 @@ export async function POST(req: Request) {
     const data = await groqResponse.json()
     let text = (data.text || "").trim()
 
+    // Clean common subtitle/noise tags like [Music], (Tawa), etc.
+    text = text.replace(/\[.*?\]|\(.*?\)/g, "").trim()
+
     // Filter out Whisper silence hallucinations
     const normalized = text.toLowerCase().replace(/[^\w\s]/g, "").trim()
     if (
+      !text ||
+      text.length <= 1 ||
       WHISPER_HALLUCINATIONS.has(text.toLowerCase()) ||
       WHISPER_HALLUCINATIONS.has(normalized) ||
       normalized === "terima kasih" ||
@@ -89,7 +101,7 @@ export async function POST(req: Request) {
       normalized === "terima kasih banyak" ||
       normalized === "subtitles by amara org" ||
       normalized === "amara org" ||
-      text.length <= 1
+      normalized === "you"
     ) {
       text = ""
     }
