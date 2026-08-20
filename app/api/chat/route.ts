@@ -16,6 +16,12 @@ import { formatBrandedError, DEFAULT_MODEL_ID } from "@/lib/models"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
+const GEMINI_MODELS = [
+  "gemini-1.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash-8b",
+]
+
 const GROQ_VISION_MODELS = [
   "llama-3.2-11b-vision-preview",
   "llama-3.2-90b-vision-preview",
@@ -42,75 +48,90 @@ export async function POST(req: Request) {
     const { messages, model, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
     if (model) requestedModel = model
 
-    // Check if the latest user message contains an image attachment
+    // Check if the latest message or any message has an image attachment
     const latestMessage = messages[messages.length - 1]
     const imageAttachment = latestMessage?.attachments?.find(
       (a: any) => a.type?.startsWith("image/") && a.url && a.url.startsWith("data:")
     )
 
     // =========================================================================
-    // 1. MULTIMODAL VISION PIPELINE (Triple-Engine: Gemini -> HF Qwen-VL -> Groq)
+    // 1. MULTIMODAL VISION PIPELINE
     // =========================================================================
     if (imageAttachment) {
       const userPromptText = (typeof latestMessage.content === "string" && latestMessage.content.trim())
         ? latestMessage.content.trim()
         : "Tolong periksa, baca seluruh teks/OCR, dan jelaskan detail isi foto/gambar ini secara lengkap dan akurat."
 
-      // --- Engine 1: Google Gemini Vision (Highest OCR & Accuracy) ---
+      let visionErrorLog: string[] = []
+
+      // --- Engine 1: Google Gemini Vision ---
       if (geminiApiKey) {
-        try {
-          const genAI = new GoogleGenerativeAI(geminiApiKey)
-          const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+        const genAI = new GoogleGenerativeAI(geminiApiKey)
 
-          const rawDataUrl = imageAttachment.url as string
-          const base64Data = rawDataUrl.includes(",") ? rawDataUrl.split(",")[1] : rawDataUrl
-          const mimeType = rawDataUrl.includes(";") ? rawDataUrl.split(";")[0].replace("data:", "") : "image/jpeg"
-
-          const systemPrompt = "Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. Analisis gambar berikut secara teliti, baca seluruh teks/OCR bila ada (nama, angka, kode, dokumen, label), dan jelaskan dengan bahasa Indonesia yang jelas, ramah, dan akurat."
-
-          const geminiStream = await geminiModel.generateContentStream([
-            systemPrompt,
-            userPromptText,
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: mimeType,
-              },
-            },
-          ])
-
-          const stream = new ReadableStream({
-            async start(controller) {
-              const encoder = new TextEncoder()
-              try {
-                for await (const chunk of geminiStream.stream) {
-                  const text = chunk.text()
-                  if (text) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`))
-                  }
-                }
-              } catch (e) {
-                controller.error(e)
-              } finally {
-                controller.close()
-              }
-            },
-          })
-
-          return new Response(stream, {
-            headers: {
-              "Content-Type": "text/event-stream",
-              "Cache-Control": "no-cache",
-              Connection: "keep-alive",
-              "X-Model-Used": "FYY-Vision-Gemini",
-            },
-          })
-        } catch (geminiErr: any) {
-          console.warn("[FYY Vision] Gemini fallback to HF/Groq:", geminiErr?.message)
+        // Parse Base64 and mime type safely
+        const rawUrl = imageAttachment.url as string
+        const commaIdx = rawUrl.indexOf(",")
+        const base64Data = commaIdx !== -1 ? rawUrl.substring(commaIdx + 1) : rawUrl
+        let mimeType = "image/jpeg"
+        if (rawUrl.startsWith("data:")) {
+          const semiIdx = rawUrl.indexOf(";")
+          if (semiIdx !== -1) {
+            mimeType = rawUrl.substring(5, semiIdx)
+          }
         }
+
+        for (const gemModelName of GEMINI_MODELS) {
+          try {
+            const geminiModel = genAI.getGenerativeModel({
+              model: gemModelName,
+              systemInstruction: "Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. Analisis gambar berikut secara teliti, baca seluruh teks/OCR bila ada (nama, angka, kode, dokumen, label), dan jelaskan dengan bahasa Indonesia yang jelas, ramah, dan akurat.",
+            })
+
+            const geminiStream = await geminiModel.generateContentStream([
+              userPromptText,
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType: mimeType,
+                },
+              },
+            ])
+
+            const stream = new ReadableStream({
+              async start(controller) {
+                const encoder = new TextEncoder()
+                try {
+                  for await (const chunk of geminiStream.stream) {
+                    const text = chunk.text()
+                    if (text) {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`))
+                    }
+                  }
+                } catch (e) {
+                  controller.error(e)
+                } finally {
+                  controller.close()
+                }
+              },
+            })
+
+            return new Response(stream, {
+              headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                Connection: "keep-alive",
+                "X-Model-Used": `FYY-Vision (${gemModelName})`,
+              },
+            })
+          } catch (gemErr: any) {
+            visionErrorLog.push(`Gemini ${gemModelName}: ${gemErr?.message || gemErr}`)
+          }
+        }
+      } else {
+        visionErrorLog.push("Gemini API key is not set in env.")
       }
 
-      // --- Engine 2: Hugging Face Qwen2.5-VL Vision (Available via HUGGINGFACE_API_TOKEN) ---
+      // --- Engine 2: Hugging Face Vision (Qwen2.5-VL) ---
       if (hfToken) {
         try {
           const hf = new HfInference(hfToken)
@@ -148,16 +169,16 @@ export async function POST(req: Request) {
                 "Content-Type": "text/event-stream",
                 "Cache-Control": "no-cache",
                 Connection: "keep-alive",
-                "X-Model-Used": "FYY-Vision-QwenVL",
+                "X-Model-Used": "FYY-Vision (Qwen-VL)",
               },
             })
           }
-        } catch (hfVisionErr: any) {
-          console.warn("[FYY Vision] HF QwenVL fallback:", hfVisionErr?.message)
+        } catch (hfErr: any) {
+          visionErrorLog.push(`HF Qwen-VL: ${hfErr?.message || hfErr}`)
         }
       }
 
-      // --- Engine 3: Groq Llama 3.2 Vision Cascade ---
+      // --- Engine 3: Groq Vision Cascade ---
       if (apiKey && apiKey.length >= 15) {
         const groq = new Groq({ apiKey })
 
@@ -213,16 +234,15 @@ export async function POST(req: Request) {
                 "X-Model-Used": visionModel,
               },
             })
-          } catch (groqVisionErr: any) {
-            console.warn(`[FYY Vision] Groq ${visionModel} failed:`, groqVisionErr?.message)
+          } catch (groqErr: any) {
+            visionErrorLog.push(`Groq ${visionModel}: ${groqErr?.message || groqErr}`)
           }
         }
       }
 
-      // If all vision engines fail, return informative message
       return NextResponse.json(
         {
-          error: "⚠️ Fitur Vision AI memerlukan konfigurasi token. Silakan tambahkan `GEMINI_API_KEY` (gratis dari Google AI Studio) atau `HUGGINGFACE_API_TOKEN` di Dashboard Vercel > Settings > Environment Variables.",
+          error: `⚠️ Fitur Vision belum dapat memproses gambar.\n\nDetail: ${visionErrorLog.join(" | ")}`,
         },
         { status: 503 }
       )
