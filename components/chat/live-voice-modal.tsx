@@ -55,6 +55,9 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const currentColor = useRef<{ r: number; g: number; b: number; a: number }>({ r: 255, g: 255, b: 255, a: 0.9 })
   const currentScale = useRef<number>(1.0)
 
+  // Cached browser voices
+  const cachedVoices = useRef<SpeechSynthesisVoice[]>([])
+
   // ── Helper: Clear All Timers ──────────────────────────────────────────────
   const clearAllTimers = () => {
     if (silenceTimer.current) {
@@ -127,6 +130,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         if (isMounted.current) onDone()
       }
 
+      // Safety watchdog
       watchdogTimer.current = setTimeout(
         finish,
         Math.min(22000, Math.max(3500, cleanText.length * 85))
@@ -136,20 +140,27 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       const ctx = audioCtx.current
       if (!ctx) {
-        finish()
+        fallbackSpeechSynthesis(cleanText, finish)
         return
       }
 
       const runPlayback = async () => {
         try {
-          if (ctx.state === "suspended") await ctx.resume()
-          if (ctx.state === "closed") {
-            finish()
-            return
+          if (ctx.state !== "running") {
+            await ctx.resume()
           }
 
-          const res = await fetch(`/api/tts?text=${encodeURIComponent(cleanText.substring(0, 240))}`)
-          if (!res.ok || !isMounted.current) {
+          // Fetch TTS with a 3-second timeout controller
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 3000)
+
+          const res = await fetch(`/api/tts?text=${encodeURIComponent(cleanText.substring(0, 240))}`, {
+            signal: controller.signal,
+          }).catch(() => null)
+
+          clearTimeout(timeoutId)
+
+          if (!res || !res.ok || !isMounted.current) {
             fallbackSpeechSynthesis(cleanText, finish)
             return
           }
@@ -201,7 +212,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       utterance.rate = 1.05
       utterance.volume = 1.0
 
-      const voices = window.speechSynthesis.getVoices()
+      const voices = cachedVoices.current.length > 0 ? cachedVoices.current : window.speechSynthesis.getVoices()
       const indonesianVoice =
         voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
         voices.find((v) => v.name.toLowerCase().includes("indonesia"))
@@ -374,7 +385,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       mediaStream.current = stream
 
       const ctx = audioCtx.current!
-      if (ctx.state === "suspended") await ctx.resume()
+      if (ctx.state !== "running") await ctx.resume()
 
       // High-Pass Filter: Cuts 85Hz rumble/hum
       const highPass = ctx.createBiquadFilter()
@@ -644,12 +655,26 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     const ctx = new AudioContextClass()
     audioCtx.current = ctx
 
-    if ("speechSynthesis" in window) {
+    // Pre-unlock AudioContext with a 1-sample silent buffer
+    try {
+      const unlockBuffer = ctx.createBuffer(1, 1, 22050)
+      const unlockSource = ctx.createBufferSource()
+      unlockSource.buffer = unlockBuffer
+      unlockSource.connect(ctx.destination)
+      unlockSource.start(0)
+      ctx.resume()
+    } catch {}
+
+    // Preload SpeechSynthesis voices
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         const u = new SpeechSynthesisUtterance("")
         u.volume = 0
         window.speechSynthesis.speak(u)
-        window.speechSynthesis.getVoices()
+        cachedVoices.current = window.speechSynthesis.getVoices()
+        window.speechSynthesis.onvoiceschanged = () => {
+          cachedVoices.current = window.speechSynthesis.getVoices()
+        }
       } catch {}
     }
 
