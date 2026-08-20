@@ -680,21 +680,6 @@ export default function ChatPage() {
 
       clearTimeout(timeoutId)
 
-      const isFallback = response.headers.get("X-Model-Fallback") === "true"
-      const usedModelId = response.headers.get("X-Model-Used")
-
-      if (isFallback && usedModelId) {
-        const modelName = models.find(m => m.id === usedModelId)?.name || "Llama 3.1 8B"
-        const notification = document.createElement('div')
-        notification.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-amber-500 text-white px-4 py-2 rounded-full shadow-2xl font-bold animate-in slide-in-from-top-4 duration-300 flex items-center gap-2'
-        notification.innerHTML = `<span>⚠️ Model Limit! Switching to ${modelName}...</span>`
-        document.body.appendChild(notification)
-        setTimeout(() => {
-          notification.classList.add('animate-out', 'fade-out', 'slide-out-to-top-4')
-          setTimeout(() => notification.remove(), 300)
-        }, 4000)
-      }
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         const rawError = errorData.error || `HTTP ${response.status}: ${response.statusText}`
