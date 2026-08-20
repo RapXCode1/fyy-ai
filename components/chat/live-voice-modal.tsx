@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { PhoneOff, Sparkles, Mic, MicOff, MessageSquare, RefreshCw, Volume2 } from "lucide-react"
+import { PhoneOff, Sparkles, Mic, MicOff, MessageSquare, RefreshCw, Volume2, X } from "lucide-react"
 
 interface LiveVoiceModalProps {
   onEndCall: () => void
@@ -12,8 +12,10 @@ type CallPhase = "connecting" | "listening" | "thinking" | "speaking" | "error"
 
 export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceModalProps) {
   const [phase, setPhase] = useState<CallPhase>("connecting")
-  const [userTranscript, setUserTranscript] = useState("")
-  const [aiTranscript, setAiTranscript] = useState("")
+  const [activeTranscript, setActiveTranscript] = useState<{ speaker: "user" | "ai" | "none"; text: string }>({
+    speaker: "none",
+    text: "Menghubungkan mikrofon...",
+  })
   const [isMuted, setIsMuted] = useState(false)
   const [showSubtitles, setShowSubtitles] = useState(true)
   const [errorMsg, setErrorMsg] = useState("")
@@ -43,7 +45,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const currentAudioSource = useRef<AudioBufferSourceNode | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Real-time audio frequency data for dynamic canvas rendering
   const liveAudioData = useRef<Uint8Array<ArrayBuffer> | null>(null)
   const liveAvgVolume = useRef<number>(0)
   const morphPhaseRef = useRef<number>(0)
@@ -81,7 +82,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     isAiBusy.current = false
   }, [])
 
-  // ── 2. Play AI Voice Response (AudioContext / Direct Buffer) ──────────────
+  // ── 2. Play AI Voice Response ─────────────────────────────────────────────
   const playAISpeech = useCallback(
     (text: string, onDone: () => void) => {
       if (!isMounted.current) {
@@ -116,12 +117,13 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         if (isMounted.current) onDone()
       }
 
-      // Safety watchdog: max 20 seconds per speech turn
+      // Max 22 seconds per speech turn
       watchdogTimer.current = setTimeout(
         finish,
         Math.min(22000, Math.max(3500, cleanText.length * 85))
       )
       setPhase("speaking")
+      setActiveTranscript({ speaker: "ai", text: cleanText })
 
       const ctx = audioCtx.current
       if (!ctx) {
@@ -158,7 +160,6 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           const source = ctx.createBufferSource()
           source.buffer = audioBuffer
 
-          // Connect to analyser for live waveform sync during AI speech
           if (analyser.current) {
             source.connect(analyser.current)
           }
@@ -187,7 +188,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       window.speechSynthesis.cancel()
       window.speechSynthesis.resume()
       const utterance = new SpeechSynthesisUtterance(text.substring(0, 220))
-      utterance.lang = "id-ID"
+      uttLangCheck(utterance)
       utterance.rate = 1.05
       utterance.volume = 1.0
 
@@ -204,6 +205,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     } catch {
       onDone()
     }
+  }
+
+  const uttLangCheck = (utt: SpeechSynthesisUtterance) => {
+    utt.lang = "id-ID"
   }
 
   // ── 3. Stop Active Recording Session ──────────────────────────────────────
@@ -243,6 +248,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     isAiBusy.current = true
     setPhase("thinking")
+    setActiveTranscript({ speaker: "none", text: "FYY-AI sedang berpikir..." })
 
     try {
       const formData = new FormData()
@@ -258,34 +264,39 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       if (!isMounted.current) return
 
       if (!recognizedText) {
-        // Hallucination filtered or unrecognized -> resume listening
+        // Hallucination filtered or silent -> resume listening
         isAiBusy.current = false
         setPhase("listening")
+        setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
         startListeningSession()
         return
       }
 
-      setUserTranscript(recognizedText)
+      // Display user speech
+      setActiveTranscript({ speaker: "user", text: recognizedText })
+
       const aiReply = await onSendMessage(recognizedText)
       if (!isMounted.current) return
 
       if (aiReply) {
-        setAiTranscript(aiReply)
         playAISpeech(aiReply, () => {
           if (isMounted.current) {
             setPhase("listening")
+            setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
             startListeningSession()
           }
         })
       } else {
         isAiBusy.current = false
         setPhase("listening")
+        setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
         startListeningSession()
       }
     } catch {
       if (isMounted.current) {
         isAiBusy.current = false
         setPhase("listening")
+        setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
         startListeningSession()
       }
     }
@@ -332,10 +343,11 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }, [processCapturedSpeech])
 
-  // ── 6. Setup Audio Pipeline + Hardware Noise Suppression + Filters ────────
+  // ── 6. Audio Setup + Hardware Noise Suppression + Filter Chain ────────────
   const initializeAudioStream = useCallback(async () => {
     setPhase("connecting")
     setErrorMsg("")
+    setActiveTranscript({ speaker: "none", text: "Menghubungkan mikrofon..." })
 
     try {
       const stream = (await Promise.race([
@@ -366,7 +378,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       const ctx = audioCtx.current!
       if (ctx.state === "suspended") await ctx.resume()
 
-      // Biquad High-Pass Filter: Cuts 80Hz rumble/hum
+      // Biquad High-Pass Filter: Cuts 80Hz rumble
       const highPass = ctx.createBiquadFilter()
       highPass.type = "highpass"
       highPass.frequency.value = 80
@@ -378,7 +390,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
       const an = ctx.createAnalyser()
       an.fftSize = 256
-      an.smoothingTimeConstant = 0.3
+      an.smoothingTimeConstant = 0.35
       analyser.current = an
 
       const sourceNode = ctx.createMediaStreamSource(stream)
@@ -418,17 +430,20 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
             if (speechFrameCount.current >= 2) {
               isUserSpeaking.current = true
               clearTimers()
+              setActiveTranscript((prev) =>
+                prev.speaker === "user" ? prev : { speaker: "user", text: "Mendengarkan ucapanmu..." }
+              )
             }
           } else {
             speechFrameCount.current = 0
             if (isUserSpeaking.current && !silenceTimer.current) {
-              // 1.25s silence after speaking -> auto-send
+              // 1.2s silence after speaking -> auto-send
               silenceTimer.current = setTimeout(() => {
                 silenceTimer.current = null
                 if (!isAiBusy.current && isRecording.current && isMounted.current) {
                   stopRecordingSession()
                 }
-              }, 1250)
+              }, 1200)
             }
           }
         }
@@ -439,7 +454,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       animFrameId.current = requestAnimationFrame(updateAudioLoop)
 
       setTimeout(() => {
-        if (isMounted.current) startListeningSession()
+        if (isMounted.current) {
+          setActiveTranscript({ speaker: "none", text: "Silakan bicara (ID/EN)..." })
+          startListeningSession()
+        }
       }, 350)
     } catch (err: any) {
       console.error("Mic initialization failed:", err)
@@ -454,7 +472,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     }
   }, [startListeningSession, stopRecordingSession])
 
-  // ── 7. Canvas Liquid Fluid Orb Renderer (ChatGPT / Gemini Live Style) ─────
+  // ── 7. Ultra-Smooth Bezier Spline Fluid Orb (ChatGPT / Gemini Live Style) ──
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -464,131 +482,142 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     let animationId: number
 
     const render = () => {
-      const width = (canvas.width = canvas.offsetWidth * window.devicePixelRatio)
-      const height = (canvas.height = canvas.offsetHeight * window.devicePixelRatio)
+      const dpr = window.devicePixelRatio || 1
+      const width = (canvas.width = canvas.offsetWidth * dpr)
+      const height = (canvas.height = canvas.offsetHeight * dpr)
       ctx.clearRect(0, 0, width, height)
 
       const centerX = width / 2
       const centerY = height / 2
-      const baseRadius = Math.min(width, height) * 0.24
+      const baseRadius = Math.min(width, height) * 0.23
       const volume = liveAvgVolume.current || 0
 
-      morphPhaseRef.current += 0.035
+      morphPhaseRef.current += 0.03
 
-      // Color Schemes based on Phase
-      let colorPrimary = "rgba(244, 63, 94, 0.9)" // Rose
-      let colorSecondary = "rgba(225, 29, 72, 0.6)"
-      let colorGlow = "rgba(244, 63, 94, 0.45)"
-      let points = 12
+      // Colors & Styling depending on Phase
+      let colorPrimary = "rgba(244, 63, 94, 0.95)"
+      let colorSecondary = "rgba(225, 29, 72, 0.75)"
+      let colorGlow = "rgba(244, 63, 94, 0.4)"
       let dynamicScale = 1.0
+      const totalPoints = 32
 
       if (phase === "listening") {
         if (isUserSpeaking.current) {
-          colorPrimary = "rgba(251, 113, 133, 0.95)"
-          colorSecondary = "rgba(244, 63, 94, 0.7)"
+          colorPrimary = "rgba(251, 113, 133, 0.98)"
+          colorSecondary = "rgba(244, 63, 94, 0.85)"
           colorGlow = "rgba(244, 63, 94, 0.55)"
-          dynamicScale = 1.0 + Math.min(0.35, volume / 100)
+          dynamicScale = 1.0 + Math.min(0.32, volume / 90)
         } else {
-          colorPrimary = "rgba(255, 255, 255, 0.9)"
-          colorSecondary = "rgba(229, 231, 235, 0.6)"
-          colorGlow = "rgba(255, 255, 255, 0.3)"
-          dynamicScale = 1.0 + Math.sin(morphPhaseRef.current * 1.5) * 0.04
+          colorPrimary = "rgba(255, 255, 255, 0.95)"
+          colorSecondary = "rgba(229, 231, 235, 0.75)"
+          colorGlow = "rgba(255, 255, 255, 0.25)"
+          dynamicScale = 1.0 + Math.sin(morphPhaseRef.current * 1.5) * 0.035
         }
       } else if (phase === "thinking") {
-        colorPrimary = "rgba(245, 158, 11, 0.95)" // Amber
-        colorSecondary = "rgba(217, 119, 6, 0.7)"
+        colorPrimary = "rgba(245, 158, 11, 0.98)"
+        colorSecondary = "rgba(217, 119, 6, 0.8)"
         colorGlow = "rgba(245, 158, 11, 0.5)"
-        dynamicScale = 1.08 + Math.sin(morphPhaseRef.current * 3.5) * 0.06
-        points = 8
+        dynamicScale = 1.06 + Math.sin(morphPhaseRef.current * 3.5) * 0.05
       } else if (phase === "speaking") {
-        colorPrimary = "rgba(244, 63, 94, 1.0)" // Radiant Crimson
-        colorSecondary = "rgba(236, 72, 153, 0.85)"
-        colorGlow = "rgba(244, 63, 94, 0.75)"
-        dynamicScale = 1.15 + Math.min(0.3, volume / 120)
-        points = 16
+        colorPrimary = "rgba(244, 63, 94, 1.0)"
+        colorSecondary = "rgba(236, 72, 153, 0.9)"
+        colorGlow = "rgba(244, 63, 94, 0.7)"
+        dynamicScale = 1.12 + Math.min(0.28, volume / 110)
       } else if (phase === "error") {
         colorPrimary = "rgba(156, 163, 175, 0.7)"
         colorSecondary = "rgba(107, 114, 128, 0.5)"
         colorGlow = "rgba(107, 114, 128, 0.2)"
-        dynamicScale = 0.92
+        dynamicScale = 0.9
       }
 
-      // Draw Ambient Radiant Glow Halo
-      const gradient = ctx.createRadialGradient(
+      // Outer Radiant Halo Glow
+      const glowGrad = ctx.createRadialGradient(
         centerX,
         centerY,
-        baseRadius * 0.5,
+        baseRadius * 0.4,
         centerX,
         centerY,
         baseRadius * dynamicScale * 2.2
       )
-      gradient.addColorStop(0, colorGlow)
-      gradient.addColorStop(0.5, colorGlow.replace("0.45", "0.15").replace("0.55", "0.2").replace("0.75", "0.3"))
-      gradient.addColorStop(1, "rgba(0, 0, 0, 0)")
+      glowGrad.addColorStop(0, colorGlow)
+      glowGrad.addColorStop(0.6, colorGlow.replace(/[\d.]+\)$/, "0.15)"))
+      glowGrad.addColorStop(1, "rgba(0, 0, 0, 0)")
 
-      ctx.fillStyle = gradient
+      ctx.fillStyle = glowGrad
       ctx.beginPath()
       ctx.arc(centerX, centerY, baseRadius * dynamicScale * 2.2, 0, Math.PI * 2)
       ctx.fill()
 
-      // Draw Fluid Organic Orb Geometry
+      // Calculate Smooth Spline Points
+      const points: { x: number; y: number }[] = []
+      const freqData = liveAudioData.current
+
+      for (let i = 0; i < totalPoints; i++) {
+        const angle = (i / totalPoints) * Math.PI * 2
+        let freqOffset = 0
+
+        if (freqData && freqData.length > 0) {
+          const sampleIdx = Math.floor((i / totalPoints) * (freqData.length * 0.6))
+          freqOffset = (freqData[sampleIdx] / 255) * (baseRadius * 0.2)
+        }
+
+        const harmonic =
+          Math.sin(angle * 3 + morphPhaseRef.current * 2) * (baseRadius * 0.05) +
+          Math.cos(angle * 4 - morphPhaseRef.current * 1.8) * (baseRadius * 0.035)
+
+        const r = baseRadius * dynamicScale + harmonic + freqOffset
+        points.push({
+          x: centerX + Math.cos(angle) * r,
+          y: centerY + Math.sin(angle) * r,
+        })
+      }
+
+      // Draw Smooth Closed Bezier Spline
       ctx.save()
       ctx.beginPath()
+      ctx.moveTo((points[0].x + points[totalPoints - 1].x) / 2, (points[0].y + points[totalPoints - 1].y) / 2)
 
-      const freqData = liveAudioData.current
-      for (let i = 0; i < points; i++) {
-        const angle = (i / points) * Math.PI * 2
-        let freqOffset = 0
-        if (freqData && freqData.length > 0) {
-          const sampleIdx = (i * 3) % freqData.length
-          freqOffset = (freqData[sampleIdx] / 255) * (baseRadius * 0.22)
-        }
-
-        const wave =
-          Math.sin(angle * 3 + morphPhaseRef.current * 2) * (baseRadius * 0.06) +
-          Math.cos(angle * 2 - morphPhaseRef.current * 1.5) * (baseRadius * 0.04)
-
-        const r = baseRadius * dynamicScale + wave + freqOffset
-        const x = centerX + Math.cos(angle) * r
-        const y = centerY + Math.sin(angle) * r
-
-        if (i === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
-        }
+      for (let i = 0; i < totalPoints; i++) {
+        const next = points[(i + 1) % totalPoints]
+        const xc = (points[i].x + next.x) / 2
+        const yc = (points[i].y + next.y) / 2
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc)
       }
       ctx.closePath()
 
-      // Liquid Core Gradient
-      const coreGradient = ctx.createLinearGradient(
-        centerX - baseRadius,
-        centerY - baseRadius,
-        centerX + baseRadius,
-        centerY + baseRadius
+      // Liquid Radial Fill
+      const liquidGrad = ctx.createRadialGradient(
+        centerX - baseRadius * 0.3,
+        centerY - baseRadius * 0.3,
+        baseRadius * 0.1,
+        centerX,
+        centerY,
+        baseRadius * dynamicScale
       )
-      coreGradient.addColorStop(0, colorPrimary)
-      coreGradient.addColorStop(1, colorSecondary)
+      liquidGrad.addColorStop(0, colorPrimary)
+      liquidGrad.addColorStop(0.85, colorSecondary)
+      liquidGrad.addColorStop(1, colorSecondary)
 
-      ctx.fillStyle = coreGradient
+      ctx.fillStyle = liquidGrad
       ctx.shadowColor = colorPrimary
-      ctx.shadowBlur = 40
+      ctx.shadowBlur = 35 * dpr
       ctx.fill()
       ctx.restore()
 
-      // Specular Light Glare Accent
+      // Organic Specular Highlights
       ctx.save()
       ctx.beginPath()
       ctx.ellipse(
         centerX - baseRadius * 0.35,
         centerY - baseRadius * 0.35,
-        baseRadius * 0.22,
-        baseRadius * 0.12,
+        baseRadius * 0.28,
+        baseRadius * 0.14,
         -Math.PI / 4,
         0,
         Math.PI * 2
       )
       ctx.fillStyle = "rgba(255, 255, 255, 0.45)"
+      ctx.filter = `blur(${2 * dpr}px)`
       ctx.fill()
       ctx.restore()
 
@@ -686,162 +715,177 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (phase === "speaking") {
       interruptAI()
       setPhase("listening")
+      setActiveTranscript({ speaker: "none", text: "Silakan bicara..." })
       startListeningSession()
     } else if (phase === "listening" && isUserSpeaking.current) {
       stopRecordingSession()
     }
   }
 
-  // ── 11. Status Label ──────────────────────────────────────────────────────
-  const statusLabel =
-    phase === "connecting"
-      ? "Menghubungkan mikrofon..."
-      : isMuted
-      ? "Mikrofon dibisukan (Muted)"
-      : phase === "listening"
-      ? isUserSpeaking.current
-        ? "Mendengarkan ucapanmu..."
-        : "Silakan bicara (ID/EN)..."
-      : phase === "thinking"
-      ? "FYY-AI sedang memproses..."
-      : phase === "speaking"
-      ? "FYY-AI sedang berbicara..."
-      : "Gagal mengakses mikrofon"
-
   return (
     <div
       className="fixed inset-0 z-[200] flex flex-col justify-between items-center select-none overflow-hidden animate-fade-in"
       style={{
-        background: "radial-gradient(circle at center, #111118 0%, #060608 100%)",
+        background: "radial-gradient(circle at 50% 40%, #151522 0%, #08080C 70%, #030305 100%)",
       }}
     >
-      {/* ── TOP HEADER BAR ── */}
-      <div className="w-full max-w-xl flex items-center justify-between px-6 pt-8 sm:pt-10 z-20">
-        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-md">
+      {/* ── TOP HEADER BAR (Clean, Centered, Symmetrical) ── */}
+      <header className="w-full max-w-xl flex items-center justify-between px-6 pt-6 sm:pt-8 z-20">
+        {/* Live Indicator Pill */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg">
           <div
-            className={`w-2 h-2 rounded-full ${
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
               phase === "speaking"
-                ? "bg-rose-500 animate-ping"
+                ? "bg-rose-500 animate-ping shadow-[0_0_8px_#f43f5e]"
                 : phase === "thinking"
                 ? "bg-amber-400 animate-pulse"
-                : "bg-emerald-400"
+                : phase === "error"
+                ? "bg-red-500"
+                : "bg-emerald-400 shadow-[0_0_6px_#34d399]"
             }`}
           />
           <span className="text-[11px] font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
-            <Sparkles size={12} className="text-rose-400" />
+            <Sparkles size={11} className="text-rose-400" />
             FYY-AI Live
           </span>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowSubtitles((prev) => !prev)}
-            className={`p-2.5 rounded-full border transition-all ${
+            className={`p-2.5 rounded-full border transition-all duration-200 ${
               showSubtitles
-                ? "bg-white/10 border-white/20 text-white"
-                : "bg-white/[0.03] border-white/5 text-gray-500 hover:text-gray-300"
+                ? "bg-white/15 border-white/25 text-white shadow-md"
+                : "bg-white/[0.04] border-white/10 text-gray-400 hover:text-white"
             }`}
             title="Toggle Teks / Subtitle"
           >
             <MessageSquare size={16} />
           </button>
+
+          <button
+            type="button"
+            onClick={onEndCall}
+            className="p-2.5 rounded-full bg-white/[0.04] border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200"
+            title="Tutup Modal"
+          >
+            <X size={16} />
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* ── STATUS TEXT PILL ── */}
-      <div className="text-center mt-3 z-20 space-y-1">
-        <p
-          className={`text-xs font-semibold tracking-wider ${
-            phase === "error"
-              ? "text-yellow-400"
+      {/* ── CENTER STAGE: SILKY LIQUID ORGANIC ORB ── */}
+      <main className="relative flex-1 w-full max-w-lg flex flex-col items-center justify-center z-10 px-4">
+        <div className="relative flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            onClick={handleOrbClick}
+            className="w-64 h-64 sm:w-80 sm:h-80 cursor-pointer active:scale-95 transition-transform duration-150 rounded-full"
+            title={
+              phase === "speaking"
+                ? "Ketuk untuk menyela (Interrupt)"
+                : "Ketuk untuk mengirim rekaman segera"
+            }
+          />
+        </div>
+
+        {/* Phase Subtitle Hint */}
+        <div className="text-center mt-3 space-y-1">
+          <p
+            className={`text-xs font-semibold tracking-wide transition-colors ${
+              phase === "error"
+                ? "text-yellow-400"
+                : isMuted
+                ? "text-gray-400"
+                : phase === "speaking"
+                ? "text-rose-400 font-bold"
+                : "text-gray-300"
+            }`}
+          >
+            {phase === "connecting"
+              ? "Menghubungkan mikrofon..."
               : isMuted
-              ? "text-gray-400"
-              : "text-rose-400 animate-pulse-slow"
-          }`}
-        >
-          {statusLabel}
-        </p>
-        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">
-          Full-Duplex · Noise Filter · Groq Whisper
-        </p>
-      </div>
+              ? "Mikrofon dibisukan (Muted)"
+              : phase === "thinking"
+              ? "FYY-AI sedang berpikir..."
+              : phase === "speaking"
+              ? "FYY-AI sedang berbicara..."
+              : "Mendengarkan · Bicara bebas (ID/EN)..."}
+          </p>
+        </div>
+      </main>
 
-      {/* ── CENTER CANVAS FLUID ORB (ChatGPT / Gemini Live Style) ── */}
-      <div className="relative flex-1 w-full max-w-lg flex items-center justify-center z-10">
-        <canvas
-          ref={canvasRef}
-          onClick={handleOrbClick}
-          className="w-72 h-72 sm:w-96 sm:h-96 cursor-pointer active:scale-95 transition-transform duration-150"
-          title={
-            phase === "speaking"
-              ? "Ketuk untuk menyela (Interrupt)"
-              : "Ketuk untuk mengirim rekaman"
-          }
-        />
-      </div>
-
-      {/* ── FLOATING LIVE TRANSCRIPT (Optional Subtitles Drawer) ── */}
+      {/* ── DYNAMIC CONVERSATION TRANSCRIPT BUBBLE (Alternates User ↔ AI) ── */}
       {showSubtitles && (
-        <div className="w-full max-w-lg px-6 mb-4 min-h-[72px] flex flex-col items-center justify-center text-center z-20">
+        <section className="w-full max-w-md px-6 mb-3 min-h-[68px] flex flex-col items-center justify-center text-center z-20">
           {phase === "error" ? (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2 bg-red-950/40 border border-red-500/20 p-3 rounded-2xl backdrop-blur-md">
               <p className="text-yellow-300 text-xs leading-relaxed">{errorMsg}</p>
               <button
                 type="button"
                 onClick={initializeAudioStream}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-full transition-all active:scale-95 shadow-lg shadow-rose-600/30"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-full transition-all active:scale-95 shadow-md shadow-rose-600/30"
               >
-                <RefreshCw size={12} /> Coba Hubungkan Ulang
+                <RefreshCw size={12} /> Hubungkan Ulang
               </button>
             </div>
-          ) : phase === "listening" && userTranscript ? (
-            <p className="text-gray-300 text-sm italic animate-fade-in line-clamp-2 px-4 py-2 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md">
-              "{userTranscript}..."
-            </p>
-          ) : phase === "speaking" && aiTranscript ? (
-            <div className="space-y-1 animate-fade-in px-4 py-2 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md">
-              <p className="text-white text-sm font-medium leading-relaxed line-clamp-3">
-                {aiTranscript}
+          ) : activeTranscript.speaker === "user" ? (
+            <div className="w-full px-4 py-2.5 rounded-2xl bg-rose-950/30 border border-rose-500/20 backdrop-blur-md animate-fade-in">
+              <p className="text-[10px] text-rose-400 uppercase tracking-widest font-black mb-0.5">Kamu</p>
+              <p className="text-gray-200 text-xs sm:text-sm font-medium italic leading-relaxed line-clamp-2">
+                "{activeTranscript.text}"
               </p>
-              <p className="text-[9px] text-gray-400 uppercase tracking-widest font-black flex items-center justify-center gap-1">
-                <Volume2 size={10} className="text-rose-400 animate-pulse" /> Ketuk bola untuk menyela
+            </div>
+          ) : activeTranscript.speaker === "ai" ? (
+            <div className="w-full px-4 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-md animate-fade-in shadow-xl">
+              <p className="text-[10px] text-rose-400 uppercase tracking-widest font-black mb-0.5 flex items-center justify-center gap-1">
+                <Volume2 size={11} className="animate-pulse" /> FYY-AI
+              </p>
+              <p className="text-white text-xs sm:text-sm font-semibold leading-relaxed line-clamp-3">
+                {activeTranscript.text}
+              </p>
+              <p className="text-[9px] text-gray-500 uppercase tracking-widest mt-1 font-mono">
+                Ketuk bola untuk menyela
               </p>
             </div>
           ) : (
-            <p className="text-gray-500 text-xs tracking-wide">
-              {isMuted ? "Mikrofon sedang dibisukan." : "Bicara bebas dalam Bahasa Indonesia atau Inggris..."}
-            </p>
+            <div className="px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-md">
+              <p className="text-gray-400 text-xs tracking-wide">
+                {isMuted ? "Mikrofon dibisukan." : activeTranscript.text}
+              </p>
+            </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* ── BOTTOM DOCK CONTROLS (ChatGPT / Gemini Live Style) ── */}
-      <div className="w-full max-w-sm flex items-center justify-center gap-6 pb-8 sm:pb-12 z-20">
+      <footer className="w-full max-w-sm flex items-center justify-center gap-6 pb-8 sm:pb-10 z-20">
         {/* Mute Button */}
         <button
           type="button"
           onClick={toggleMute}
           className={`p-4 rounded-full border transition-all duration-200 active:scale-90 ${
             isMuted
-              ? "bg-red-500/20 border-red-500/40 text-red-400"
+              ? "bg-red-500/20 border-red-500/40 text-red-400 shadow-lg shadow-red-500/10"
               : "bg-white/[0.06] border-white/10 text-white hover:bg-white/10"
           }`}
           title={isMuted ? "Nyalakan Mikrofon" : "Bisukan Mikrofon (Mute)"}
         >
-          {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+          {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
 
         {/* End Call Button */}
         <button
           type="button"
           onClick={onEndCall}
-          className="p-5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl shadow-red-600/50 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center"
+          className="p-5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl shadow-red-600/40 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center"
           title="Akhiri Panggilan"
         >
-          <PhoneOff size={28} />
+          <PhoneOff size={26} />
         </button>
-      </div>
+      </footer>
     </div>
   )
 }
