@@ -6,50 +6,36 @@ export interface ModelInfo {
   badge?: string
 }
 
-// ✅ Model IDs confirmed working on Groq API (no namespace prefix needed)
+// ✅ Model IDs yang 100% aktif dan didukung di Groq API
 export const OFFICIAL_MODELS: ModelInfo[] = [
   {
     id: "llama-3.3-70b-versatile",
     name: "FYY-Llama 3.3 (PRO)",
-    description: "Performa tinggi untuk pemrosesan teks kompleks, coding, dan analisis mendalam.",
+    description: "Performa tertinggi untuk pemrosesan teks kompleks, coding, dan analisis mendalam.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "PRO",
   },
   {
-    id: "llama-4-scout-17b-16e-instruct",
-    name: "FYY-Llama 4 Scout",
-    description: "Model penalaran generasi terbaru dengan dukungan pemrosesan multimodal mutakhir.",
-    provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
-    badge: "NEW",
-  },
-  {
-    id: "qwen-qwen3-32b",
-    name: "FYY-Qwen 3 32B",
-    description: "Keunggulan multibahasa dan matematika dengan kecepatan inferensi tinggi.",
+    id: "llama-3.1-8b-instant",
+    name: "FYY-Llama 3.1 Fast",
+    description: "Respons ultra-cepat dengan latensi sangat rendah untuk percakapan harian.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
     badge: "FAST",
   },
   {
-    id: "llama-3.1-8b-instant",
-    name: "FYY-Llama 3.1 Fast",
-    description: "Respons ultra-cepat untuk percakapan ringan dan pertanyaan singkat.",
+    id: "llama-3.3-70b-versatile",
+    name: "FYY-Reasoning 70B",
+    description: "Model penalaran mendalam dan pemecahan masalah logika tingkat tinggi.",
     provider: "FYY-GROQ SYSTEM INTELLIGENCE (FYY-LLM)",
-    badge: "LITE",
+    badge: "ELITE",
   },
 ]
 
-// Default / Fallback model yang pasti tersedia di Groq
 export const DEFAULT_MODEL_ID = "llama-3.3-70b-versatile"
 export const FALLBACK_MODEL_ID = "llama-3.1-8b-instant"
 
 export const MODEL_NAME_MAP: Record<string, string> = {
   "llama-3.3-70b-versatile": "FYY-Llama 3.3 (PRO)",
-  "llama-3.3-70b-specdec": "FYY-Llama 3.3 SpecDec",
-  "llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
-  "meta-llama/llama-4-scout-17b-16e-instruct": "FYY-Llama 4 Scout",
-  "openai/gpt-oss-120b": "FYY-GPT-OSS 120B",
-  "qwen-qwen3-32b": "FYY-Qwen 3 32B",
-  "qwen/qwen3-32b": "FYY-Qwen 3 32B",
   "llama-3.1-8b-instant": "FYY-Llama 3.1 Fast",
   "llama-3.2-11b-vision-preview": "FYY-Vision 11B",
   "llama-3.2-90b-vision-preview": "FYY-Vision 90B",
@@ -58,12 +44,12 @@ export const MODEL_NAME_MAP: Record<string, string> = {
 export function formatBrandedError(rawError: string, modelId?: string): string {
   let text = rawError || "Terjadi kesalahan pada sistem."
 
-  // Guard: jika sudah di-format (ada prefix ⚠️/⏳/🔑), jangan format ulang
+  // Guard: jika sudah berformat, jangan duplikasi
   if (text.startsWith("⚠️") || text.startsWith("⏳") || text.startsWith("🔑") || text.startsWith("🌐")) {
     return text
   }
 
-  // Extract clean message jika raw JSON string dari Groq
+  // Extract clean message jika raw JSON string
   try {
     const jsonMatch = text.match(/\{[\s\S]*"error"[\s\S]*\}/)
     if (jsonMatch) {
@@ -80,7 +66,6 @@ export function formatBrandedError(rawError: string, modelId?: string): string {
     text = text.replace(regex, `**${brandedName}**`)
   }
 
-  // Handle common Groq errors gracefully
   if (
     text.toLowerCase().includes("does not exist") ||
     text.toLowerCase().includes("model_not_found") ||
@@ -90,15 +75,15 @@ export function formatBrandedError(rawError: string, modelId?: string): string {
     const currentModelName = modelId && MODEL_NAME_MAP[modelId]
       ? `**${MODEL_NAME_MAP[modelId]}**`
       : "Model yang dipilih"
-    return `⚠️ ${currentModelName} tidak tersedia saat ini di server **FYY-GROQ SYSTEM INTELLIGENCE**. Silakan pilih model lain (seperti **FYY-Llama 3.1 Fast** atau **FYY-Qwen 3 32B**) dari menu Model.`
+    return `⚠️ ${currentModelName} tidak dapat diakses atau API Key Groq belum valid. Silakan periksa kunci API di menu **Settings (⚙️)** atau Dashboard Vercel.`
   }
 
   if (text.toLowerCase().includes("rate limit") || text.includes("429")) {
-    return `⏳ Batas frekuensi permintaan tercapai. Mohon tunggu beberapa detik atau gunakan model lain.`
+    return `⏳ Batas frekuensi permintaan (rate limit) tercapai di server **FYY-GROQ SYSTEM INTELLIGENCE**. Mohon tunggu beberapa detik.`
   }
 
-  if (text.toLowerCase().includes("invalid_api_key") || text.toLowerCase().includes("api key")) {
-    return `🔑 API key **FYY-GROQ SYSTEM INTELLIGENCE** belum terkonfigurasi. Silakan set GROQ_API_KEY di Vercel Environment Variables.`
+  if (text.toLowerCase().includes("invalid_api_key") || text.toLowerCase().includes("api key") || text.includes("401")) {
+    return `🔑 Kunci API **FYY-GROQ SYSTEM INTELLIGENCE** belum valid atau belum diset. Silakan masukkan API key Groq kamu di menu **Settings (⚙️)**.`
   }
 
   if (text.toLowerCase().includes("failed to fetch") || text.toLowerCase().includes("network")) {

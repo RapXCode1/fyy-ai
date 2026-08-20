@@ -83,17 +83,7 @@ export async function POST(req: Request) {
       m.attachments && m.attachments.some((a: any) => a.type.startsWith('image/'))
     )
 
-    // Force a vision-capable model if images are present
     let finalModel = model || DEFAULT_MODEL_ID
-    
-    // Models that support vision on Groq
-    const visionModels = [
-      "llama-4-scout-17b-16e-instruct",
-    ]
-
-    if (hasImages && !visionModels.includes(finalModel)) {
-      finalModel = "llama-4-scout-17b-16e-instruct"
-    }
 
     // Process messages to handle multi-modal content (images)
     const processedMessages = messages.map((m: any) => {
