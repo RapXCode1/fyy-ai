@@ -9,23 +9,21 @@ import {
   getLiveInstruction,
   globalSettings,
 } from "@/lib/settings"
-import { formatBrandedError, DEFAULT_MODEL_ID, MODEL_NAME_MAP } from "@/lib/models"
+import { formatBrandedError, DEFAULT_MODEL_ID } from "@/lib/models"
 
-// ── Use nodejs runtime (no edge timeout, supports full Node.js APIs) ──────────
 export const runtime = "nodejs"
-export const maxDuration = 60 // seconds (Vercel Pro/Hobby max)
+export const maxDuration = 60
 
-// ── Model cascade — ordered by reliability & availability ─────────────────────
-const RELIABLE_CASCADE: string[] = [
-  "llama-3.3-70b-versatile",   // Most stable, great quality & memory
-  "llama-3.1-8b-instant",      // Ultra-fast, high availability
-  "gemma2-9b-it",              // Reliable small model
-  "openai/gpt-oss-20b",        // Medium weight fallback
-  "openai/gpt-oss-120b",       // Heavy, reasoning
-  "qwen/qwen3.6-27b",          // Alternative
+const FALLBACK_MODELS: string[] = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "gemma2-9b-it",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.6-27b",
 ]
 
-const VISION_CASCADE: string[] = [
+const VISION_MODELS: string[] = [
   "llama-3.2-11b-vision-preview",
   "llama-3.2-90b-vision-preview",
   "llama-3.3-70b-versatile",
@@ -41,8 +39,7 @@ export async function POST(req: Request) {
     if (!apiKey || apiKey.startsWith("gsk_placeholder") || apiKey.length < 15) {
       return NextResponse.json(
         {
-          error:
-            "🔑 API Key **FYY-GROQ SYSTEM INTELLIGENCE** belum terpasang di Vercel.\n\nSilakan buka Dashboard Vercel > **Settings** > **Environment Variables** > tambahkan **`GROQ_API_KEY`** lalu lakukan **Redeploy**.",
+          error: "🔑 API Key belum terpasang. Silakan buka Dashboard Vercel > Settings > Environment Variables lalu tambahkan GROQ_API_KEY dan lakukan Redeploy.",
         },
         { status: 500 }
       )
@@ -52,7 +49,6 @@ export async function POST(req: Request) {
     const { messages, model, mode, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
     if (model) requestedModel = model
 
-    // ── Owner mode detection ────────────────────────────────────────────────
     const isOwnerMode =
       isOwner ||
       messages.some(
@@ -62,17 +58,16 @@ export async function POST(req: Request) {
           m.content.includes("FYY3257")
       )
 
-    // ── Assemble system prompt from secure decoded blobs ────────────────────
     const basePrompt = isOwnerMode ? getOwnerPrompt() : getSystemPrompt()
-    const guestInstruction = isGuest ? getGuestInstruction() : ""
-    const liveInstruction = isLiveMode ? getLiveInstruction() : ""
+    const guestPart = isGuest ? getGuestInstruction() : ""
+    const livePart = isLiveMode ? getLiveInstruction() : ""
 
     const systemContent = [
       basePrompt,
       getIdentityKnowledge(),
       getBehaviorRules(),
-      liveInstruction,
-      guestInstruction,
+      livePart,
+      guestPart,
       customInstruction ? `[INSTRUKSI KHUSUS DARI USER: ${customInstruction}]` : "",
     ]
       .filter(Boolean)
@@ -80,107 +75,89 @@ export async function POST(req: Request) {
 
     const systemMessage = { role: "system", content: systemContent }
 
-    // ── Check if any message contains image attachments ───────────────────
     const hasImages = messages.some(
       (m: any) => m.attachments && m.attachments.some((a: any) => a.type?.startsWith("image/"))
     )
 
-    // ── Build model candidate list ──────────────────────────────────────────
     const finalModel = model || DEFAULT_MODEL_ID
-    const baseList = hasImages ? [...VISION_CASCADE, finalModel] : [finalModel, ...RELIABLE_CASCADE]
-    const candidateModels = baseList.filter((m, idx, arr) => m && arr.indexOf(m) === idx)
+    const modelList = hasImages ? [...VISION_MODELS, finalModel] : [finalModel, ...FALLBACK_MODELS]
+    const candidates = modelList.filter((m, i, arr) => m && arr.indexOf(m) === i)
 
-    // ── Clean & preserve conversation memory (keep last 25 turns) ───────────
-    const recentMessages = messages.slice(-25)
+    const recent = messages.slice(-25)
 
-    const processedMessages = recentMessages
+    const formatted = recent
       .filter((m: any) => {
         const hasText = typeof m.content === "string" && m.content.trim().length > 0
         const hasAtts = Array.isArray(m.attachments) && m.attachments.length > 0
         return hasText || hasAtts
       })
       .map((m: any) => {
-        const contentParts: any[] = []
-        if (m.content) contentParts.push({ type: "text", text: m.content })
+        const parts: any[] = []
+        if (m.content) parts.push({ type: "text", text: m.content })
 
         if (m.attachments?.length > 0) {
           m.attachments.forEach((att: any) => {
             if (att.type?.startsWith("image/") && att.url) {
-              contentParts.push({ type: "image_url", image_url: { url: att.url } })
+              parts.push({ type: "image_url", image_url: { url: att.url } })
             } else {
-              const info = `\n[File Attachment: ${att.name} (${(att.size / 1024 / 1024).toFixed(2)}MB), Type: ${att.type}]`
-              if (contentParts[0]?.type === "text") contentParts[0].text += info
-              else contentParts.push({ type: "text", text: info })
+              const note = `\n[File: ${att.name} (${(att.size / 1024 / 1024).toFixed(2)}MB), Type: ${att.type}]`
+              if (parts[0]?.type === "text") parts[0].text += note
+              else parts.push({ type: "text", text: note })
             }
           })
         }
 
         return {
           role: m.role === "assistant" ? "assistant" : "user",
-          content: contentParts.length > 1 || (contentParts[0]?.type === "image_url") ? contentParts : (m.content || ""),
+          content: parts.length > 1 || parts[0]?.type === "image_url" ? parts : (m.content || ""),
         }
       })
 
-    // ── Smart cascade with error-type awareness ─────────────────────────────
     let response: any = null
     let usedModel = finalModel
     let isFallback = false
     let lastError: any = null
 
-    for (const modelToTry of candidateModels) {
+    for (const tryModel of candidates) {
       try {
         response = await groq.chat.completions.create({
-          model: modelToTry,
-          messages: [systemMessage, ...processedMessages],
+          model: tryModel,
+          messages: [systemMessage, ...formatted],
           stream: true,
           temperature: globalSettings.temperature,
           max_tokens: 4096,
           top_p: globalSettings.topP,
         })
-        usedModel = modelToTry
-        if (modelToTry !== finalModel) {
-          isFallback = true
-          console.log(`[FYY-CASCADE] ${finalModel} → ${modelToTry}`)
-        }
+        usedModel = tryModel
+        if (tryModel !== finalModel) isFallback = true
         break
       } catch (err: any) {
         lastError = err
         const status = err?.status || err?.error?.status
         const msg = err?.message || ""
 
-        // 404 / 400 (vision unsupported or model missing) → try next immediately
         if (status === 404 || status === 400 || msg.includes("model_not_found") || msg.includes("vision")) {
-          console.warn(`[FYY-CASCADE] ${modelToTry} unsupported (${status}), trying next...`)
           continue
         }
-
-        // 429 = rate limited → try next immediately
         if (status === 429 || msg.includes("rate_limit")) {
-          console.warn(`[FYY-CASCADE] ${modelToTry} rate limited, trying next...`)
           continue
         }
-
-        // 503/overload → brief pause then try next
         if (status === 503 || msg.includes("overloaded")) {
-          console.warn(`[FYY-CASCADE] ${modelToTry} overloaded, pausing 800ms...`)
           await new Promise((r) => setTimeout(r, 800))
           continue
         }
-
-        console.warn(`[FYY-CASCADE] ${modelToTry} failed (${status}): ${msg}`)
       }
     }
 
     if (!response) {
       const friendlyMsg =
         lastError?.status === 429
-          ? "Sistem FYY-AI sedang sangat ramai. Mohon coba lagi dalam beberapa detik — layanan ini gratis dan tanpa batas untuk semua pengguna! 🙏"
+          ? "Sistem FYY-AI sedang sangat ramai. Mohon coba lagi dalam beberapa detik — layanan ini gratis untuk semua pengguna! 🙏"
           : formatBrandedError(lastError?.message || "Gagal menghubungi AI engine.", requestedModel)
 
       return NextResponse.json({ error: friendlyMsg }, { status: 503 })
     }
 
-    // ── Stream response with <think> tag filtering ──────────────────────────
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
@@ -219,7 +196,6 @@ export async function POST(req: Request) {
             }
           }
 
-          // Flush remaining
           if (buf && !insideThink) {
             const clean = buf.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\/?think>/gi, "")
             if (clean) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: clean })}\n\n`))
@@ -242,7 +218,6 @@ export async function POST(req: Request) {
       },
     })
   } catch (error: any) {
-    console.error("[FYY-CHAT] Unhandled error:", error)
     const brandedError = formatBrandedError(
       error?.message || "Terjadi kesalahan tak terduga.",
       requestedModel

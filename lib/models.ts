@@ -6,7 +6,7 @@ export interface ModelInfo {
   badge?: string
 }
 
-// 🌟 5 MODEL UTAMA CORE AI CHAT FYY-AI
+// main chat models
 export const OFFICIAL_MODELS: ModelInfo[] = [
   {
     id: "llama-3.3-70b-versatile",
@@ -45,14 +45,14 @@ export const OFFICIAL_MODELS: ModelInfo[] = [
   },
 ]
 
-// 👁️ 1 MODEL VISION
+// vision model
 export const VISION_MODEL = {
   id: "fyy-vision",
   name: "FYY-Vision Multimodal",
   description: "Pemrosesan gambar cerdas, OCR dokumen, dan analisis visual mendalam.",
 }
 
-// 🎨 4 MODEL IMAGE GENERATOR (FYY-DIFFUSION)
+// image generator models
 export const IMAGE_GENERATOR_MODELS = [
   {
     id: "flux",
@@ -99,12 +99,12 @@ export const MODEL_NAME_MAP: Record<string, string> = {
 export function formatBrandedError(rawError: string, modelId?: string): string {
   let text = rawError || "Terjadi kesalahan pada sistem."
 
-  // Guard: jika sudah berformat, jangan duplikasi
+  // skip if already formatted
   if (text.startsWith("⚠️") || text.startsWith("⏳") || text.startsWith("🔑") || text.startsWith("🌐")) {
     return text
   }
 
-  // Extract clean message jika raw JSON string
+  // parse JSON error if raw
   try {
     const jsonMatch = text.match(/\{[\s\S]*"error"[\s\S]*\}/)
     if (jsonMatch) {
@@ -115,7 +115,7 @@ export function formatBrandedError(rawError: string, modelId?: string): string {
     }
   } catch {}
 
-  // Ganti nama model teknis dengan nama FYY-AI branded
+  // replace raw model ids with branded names
   for (const [rawId, brandedName] of Object.entries(MODEL_NAME_MAP)) {
     const regex = new RegExp(rawId.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "gi")
     text = text.replace(regex, `**${brandedName}**`)

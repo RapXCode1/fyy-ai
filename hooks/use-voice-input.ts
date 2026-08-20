@@ -193,7 +193,7 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
     }
     if (isRecording) return
 
-    // ── Create a fresh instance every time (required on iOS/Android) ──────────
+    // Create a fresh recognition instance every call (needed on iOS/Android)
     const SpeechRecognitionClass = (typeof window !== 'undefined')
       ? (window.SpeechRecognition || window.webkitSpeechRecognition)
       : null
