@@ -14,7 +14,12 @@ import { formatBrandedError, DEFAULT_MODEL_ID } from "@/lib/models"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-const FALLBACK_MODELS: string[] = [
+const VISION_MODELS = [
+  "llama-3.2-11b-vision-preview",
+  "llama-3.2-90b-vision-preview",
+]
+
+const TEXT_FALLBACK_MODELS = [
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
   "gemma2-9b-it",
@@ -23,15 +28,8 @@ const FALLBACK_MODELS: string[] = [
   "qwen/qwen3.6-27b",
 ]
 
-const VISION_MODELS: string[] = [
-  "llama-3.2-11b-vision-preview",
-  "llama-3.2-90b-vision-preview",
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-]
-
 export async function POST(req: Request) {
-  let requestedModel = "llama-3.3-70b-versatile"
+  let requestedModel = DEFAULT_MODEL_ID
   try {
     const rawApiKey = process.env.GROQ_API_KEY || req.headers.get("x-groq-key") || ""
     const apiKey = rawApiKey.trim()
@@ -39,14 +37,14 @@ export async function POST(req: Request) {
     if (!apiKey || apiKey.startsWith("gsk_placeholder") || apiKey.length < 15) {
       return NextResponse.json(
         {
-          error: "🔑 API Key belum terpasang. Silakan buka Dashboard Vercel > Settings > Environment Variables lalu tambahkan GROQ_API_KEY dan lakukan Redeploy.",
+          error: "🔑 API Key belum terpasang. Silakan tambahkan GROQ_API_KEY di Dashboard Vercel > Settings > Environment Variables.",
         },
         { status: 500 }
       )
     }
 
     const groq = new Groq({ apiKey })
-    const { messages, model, mode, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
+    const { messages, model, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
     if (model) requestedModel = model
 
     const isOwnerMode =
@@ -75,75 +73,115 @@ export async function POST(req: Request) {
 
     const systemMessage = { role: "system", content: systemContent }
 
+    // Check if the latest user turn or any recent message has image attachments
     const hasImages = messages.some(
       (m: any) => m.attachments && m.attachments.some((a: any) => a.type?.startsWith("image/"))
     )
 
-    const finalModel = model || DEFAULT_MODEL_ID
-    const modelList = hasImages ? [...VISION_MODELS, finalModel] : [finalModel, ...FALLBACK_MODELS]
-    const candidates = modelList.filter((m, i, arr) => m && arr.indexOf(m) === i)
+    // Build model candidate cascade
+    let candidates: string[]
+    if (hasImages) {
+      // Try Vision models first, then fallback to text models with stripped images
+      candidates = [...VISION_MODELS, requestedModel, ...TEXT_FALLBACK_MODELS].filter(
+        (m, i, arr) => m && arr.indexOf(m) === i
+      )
+    } else {
+      candidates = [requestedModel, ...TEXT_FALLBACK_MODELS].filter(
+        (m, i, arr) => m && arr.indexOf(m) === i
+      )
+    }
 
-    const recent = messages.slice(-25)
+    // Keep the last 20 turns for memory retention
+    const recent = messages.slice(-20)
 
-    const formatted = recent
-      .filter((m: any) => {
-        const hasText = typeof m.content === "string" && m.content.trim().length > 0
-        const hasAtts = Array.isArray(m.attachments) && m.attachments.length > 0
-        return hasText || hasAtts
-      })
-      .map((m: any) => {
-        const parts: any[] = []
-        if (m.content) parts.push({ type: "text", text: m.content })
+    // Helper: format messages specifically for a given model (vision vs text-only)
+    const buildMessagesForModel = (isVision: boolean) => {
+      const formattedList: any[] = [systemMessage]
 
-        if (m.attachments?.length > 0) {
+      recent.forEach((m: any, idx: number) => {
+        const isLatestUser = idx === recent.length - 1 && m.role === "user"
+        const textContent = (typeof m.content === "string" ? m.content : "").trim()
+
+        if (isVision && isLatestUser && m.attachments?.some((a: any) => a.type?.startsWith("image/") && a.url)) {
+          // Build multimodal content array for Vision model
+          const parts: any[] = []
+          parts.push({
+            type: "text",
+            text: textContent || "Tolong periksa, jelaskan, dan baca isi gambar ini secara detail.",
+          })
+
           m.attachments.forEach((att: any) => {
             if (att.type?.startsWith("image/") && att.url) {
-              parts.push({ type: "image_url", image_url: { url: att.url } })
-            } else {
-              const note = `\n[File: ${att.name} (${(att.size / 1024 / 1024).toFixed(2)}MB), Type: ${att.type}]`
-              if (parts[0]?.type === "text") parts[0].text += note
-              else parts.push({ type: "text", text: note })
+              parts.push({
+                type: "image_url",
+                image_url: {
+                  url: att.url,
+                },
+              })
             }
           })
-        }
 
-        return {
-          role: m.role === "assistant" ? "assistant" : "user",
-          content: parts.length > 1 || parts[0]?.type === "image_url" ? parts : (m.content || ""),
+          formattedList.push({
+            role: "user",
+            content: parts,
+          })
+        } else {
+          // Text-only turn or historical turn (strip heavy base64 to save context window)
+          let turnText = textContent
+          if (m.attachments?.length > 0) {
+            const fileNotes = m.attachments
+              .map((att: any) => `[Lampiran: ${att.name || "Berkas"} (${att.type || "file"})]`)
+              .join(" ")
+            turnText = turnText ? `${turnText}\n${fileNotes}` : fileNotes
+          }
+
+          if (turnText || m.role === "assistant") {
+            formattedList.push({
+              role: m.role === "assistant" ? "assistant" : "user",
+              content: turnText || "...",
+            })
+          }
         }
       })
 
+      return formattedList
+    }
+
     let response: any = null
-    let usedModel = finalModel
+    let usedModel = requestedModel
     let isFallback = false
     let lastError: any = null
 
     for (const tryModel of candidates) {
+      const isVisionModel = VISION_MODELS.includes(tryModel)
+      const modelMessages = buildMessagesForModel(isVisionModel)
+
       try {
         response = await groq.chat.completions.create({
           model: tryModel,
-          messages: [systemMessage, ...formatted],
+          messages: modelMessages,
           stream: true,
-          temperature: globalSettings.temperature,
-          max_tokens: 4096,
+          temperature: isVisionModel ? 0.4 : globalSettings.temperature,
+          max_tokens: isVisionModel ? 2048 : 4096,
           top_p: globalSettings.topP,
         })
         usedModel = tryModel
-        if (tryModel !== finalModel) isFallback = true
+        if (tryModel !== requestedModel) isFallback = true
         break
       } catch (err: any) {
         lastError = err
         const status = err?.status || err?.error?.status
-        const msg = err?.message || ""
+        const msg = (err?.message || "").toLowerCase()
 
-        if (status === 404 || status === 400 || msg.includes("model_not_found") || msg.includes("vision")) {
+        // If vision model 400/404/not found, continue to next model seamlessly
+        if (status === 404 || status === 400 || msg.includes("not found") || msg.includes("vision") || msg.includes("unsupported")) {
           continue
         }
-        if (status === 429 || msg.includes("rate_limit")) {
+        if (status === 429 || msg.includes("rate_limit") || msg.includes("rate limit")) {
           continue
         }
         if (status === 503 || msg.includes("overloaded")) {
-          await new Promise((r) => setTimeout(r, 800))
+          await new Promise((r) => setTimeout(r, 600))
           continue
         }
       }
