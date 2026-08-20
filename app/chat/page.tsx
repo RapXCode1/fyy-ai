@@ -571,8 +571,8 @@ export default function ChatPage() {
     setShowExportMenu(false)
   }
 
-  const handleSendMessage = async (content: string, attachments?: Array<{ type: string, url?: string, name: string, size: number }>) => {
-    if (!content.trim() && (!attachments || attachments.length === 0)) return
+  const handleSendMessage = async (content: string, attachments?: Array<{ type: string, url?: string, name: string, size: number }>): Promise<string> => {
+    if (!content.trim() && (!attachments || attachments.length === 0)) return ""
 
     if (content.includes("FYY3257")) {
       localStorage.setItem("fyy_owner_mode", "true")
@@ -584,7 +584,7 @@ export default function ChatPage() {
       const chatsCount = chats ? parseInt(chats) : 0
       if (chatsCount >= 20) {
         setShowGuestLimitPopup({ type: "chat", lockedItem: "" })
-        return
+        return ""
       }
       localStorage.setItem("fyy_guest_chats_count", (chatsCount + 1).toString())
       setGuestChatsCount(chatsCount + 1)
@@ -783,6 +783,7 @@ export default function ChatPage() {
         speak(accumulatedContent)
       }
 
+      return accumulatedContent
     } catch (error) {
       console.error("Error sending message:", error)
       let errorMessage = "Maaf, terjadi kendala sesaat pada sistem. Silakan coba beberapa saat lagi."
@@ -804,6 +805,7 @@ export default function ChatPage() {
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMsg])
+      return errorMessage
     } finally {
       setIsLoading(false)
       setIsReceiving(false)
@@ -919,25 +921,6 @@ export default function ChatPage() {
       }}
     >
       <HeroWelcomeAnimation />
-
-      {/* Full-Screen Live Voice Modal */}
-      {isLiveMode && (
-        <LiveVoiceModal
-          state={callState}
-          onEndCall={() => {
-            setIsLiveMode(false)
-            stopSpeech()
-          }}
-          onInterrupt={() => {
-            if (isSpeaking) {
-              stopSpeech()
-              setLiveModeTrigger(prev => prev + 1)
-            }
-          }}
-          userTranscript={input}
-          aiTranscript={aiTranscript}
-        />
-      )}
 
       {/* Sidebar */}
       <ChatSidebar
@@ -1295,16 +1278,14 @@ export default function ChatPage() {
       {/* Live Voice Modal (Full Screen Call Experience) */}
       {isLiveMode && (
         <LiveVoiceModal
-          state={isSpeaking ? "speaking" : isLoading || isReceiving ? "thinking" : "listening"}
           onEndCall={() => {
             setIsLiveMode(false)
             stopSpeech()
           }}
-          onInterrupt={() => {
-            stopSpeech()
+          onSendMessage={async (msg) => {
+            const reply = await handleSendMessage(msg)
+            return reply || ""
           }}
-          userTranscript={input}
-          aiTranscript={messages.slice().reverse().find((m) => m.role === "assistant")?.content}
         />
       )}
 
