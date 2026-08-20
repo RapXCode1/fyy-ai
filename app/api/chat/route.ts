@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     }
 
     const groq = new Groq({ apiKey })
-    const { messages, model, mode, isLiveMode, isGuest, isOwner } = await req.json()
+    const { messages, model, mode, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
     if (model) requestedModel = model
 
     // ── Owner mode detection ────────────────────────────────────────────────
@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       getBehaviorRules(),
       liveInstruction,
       guestInstruction,
+      customInstruction ? `[INSTRUKSI KHUSUS DARI USER: ${customInstruction}]` : "",
     ]
       .filter(Boolean)
       .join("\n\n")

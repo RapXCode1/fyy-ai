@@ -191,13 +191,54 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
       const ok = await requestMicrophonePermission()
       if (!ok) return
     }
+    if (isRecording) return
 
-    if (recognitionRef.current && !isRecording) {
-      try {
-        recognitionRef.current.start()
-      } catch (error) {
-        onError?.("Failed to start speech recognition")
+    // ── Create a fresh instance every time (required on iOS/Android) ──────────
+    const SpeechRecognitionClass = (typeof window !== 'undefined')
+      ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+      : null
+    if (!SpeechRecognitionClass) {
+      onError?.('Voice recognition is not supported in this browser.')
+      return
+    }
+
+    const recognition = new SpeechRecognitionClass()
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = 'id-ID'
+
+    recognition.onstart = () => setIsRecording(true)
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript
+        }
       }
+      if (finalTranscript) callbacksRef.current.onTranscript?.(finalTranscript)
+    }
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      let errorMsg = 'Voice input unavailable. Try typing instead.'
+      if (event.error === 'not-allowed') errorMsg = 'Microphone permission denied. Please enable access.'
+      else if (event.error === 'no-speech') errorMsg = 'No speech detected. Please try again.'
+      else if (event.error === 'network') errorMsg = 'Network error during voice recognition.'
+      callbacksRef.current.onError?.(errorMsg)
+      setIsRecording(false)
+    }
+
+    recognition.onend = () => {
+      setIsRecording(false)
+      callbacksRef.current.onEnd?.()
+    }
+
+    recognitionRef.current = recognition
+
+    try {
+      recognition.start()
+    } catch (error) {
+      onError?.('Failed to start speech recognition. Please try again.')
     }
   }, [isRecording, onError, permissionState, requestMicrophonePermission])
 

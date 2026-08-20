@@ -88,7 +88,10 @@ export default function ChatPage() {
   const [isReceiving, setIsReceiving] = useState(false)
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID)
   const [selectedMode, setSelectedMode] = useState("general")
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined") return window.innerWidth >= 768
+    return true
+  })
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [showModesSelector, setShowModesSelector] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -457,6 +460,10 @@ export default function ChatPage() {
     }
     setCurrentConversationId(newConversation.id)
     setMessages([])
+    // Auto-close sidebar on mobile after new chat
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
   }
 
   const handleSelectConversation = (id: string) => {
@@ -467,6 +474,10 @@ export default function ChatPage() {
       const validModel = models.find(m => m.id === conversation.model)?.id || models[0].id
       setSelectedModel(validModel)
       setSelectedMode(conversation.mode || "general")
+    }
+    // Auto-close sidebar on mobile after selecting conversation
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
     }
   }
 
@@ -583,6 +594,7 @@ export default function ChatPage() {
     setShowModesSelector(false)
     setShowSettings(false)
     setShowExportMenu(false)
+    setShowQuickPrompts(false)
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -654,20 +666,52 @@ export default function ChatPage() {
         payloadMessages = allMessages.slice(-10)
       }
 
+      // Compress images before sending (anti-413 fix)
+      const compressImage = (dataUrl: string, maxPx = 1024, quality = 0.72): Promise<string> => {
+        return new Promise((resolve) => {
+          try {
+            const img = new window.Image()
+            img.onload = () => {
+              const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+              const w = Math.round(img.width * scale)
+              const h = Math.round(img.height * scale)
+              const canvas = document.createElement('canvas')
+              canvas.width = w; canvas.height = h
+              const ctx = canvas.getContext('2d')
+              ctx?.drawImage(img, 0, 0, w, h)
+              resolve(canvas.toDataURL('image/jpeg', quality))
+            }
+            img.onerror = () => resolve(dataUrl)
+            img.src = dataUrl
+          } catch { resolve(dataUrl) }
+        })
+      }
+
+      const compressedMessages = await Promise.all(payloadMessages.map(async (m) => {
+        if (!m.attachments?.length) return { role: m.role, content: m.content, attachments: m.attachments }
+        const compressedAttachments = await Promise.all(m.attachments.map(async (att) => {
+          if (att.type?.startsWith('image/') && att.url && att.url.startsWith('data:')) {
+            const compressed = await compressImage(att.url)
+            return { ...att, url: compressed }
+          }
+          return att
+        }))
+        return { role: m.role, content: m.content, attachments: compressedAttachments }
+      }))
+
+      const customInstruction = typeof window !== 'undefined' ? localStorage.getItem('fyy_user_custom_instruction') || '' : ''
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: payloadMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-            attachments: m.attachments,
-          })),
+          messages: compressedMessages,
           model: selectedModel,
           mode: selectedMode,
           isLiveMode: isLiveModeRef.current,
           isGuest: !isSignedIn,
           isOwner: isOwner,
+          customInstruction: customInstruction.trim() || undefined,
         }),
         signal: controller.signal,
       })

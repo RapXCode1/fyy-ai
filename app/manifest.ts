@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'FYY-AI Intelligence Platform',
     short_name: 'FYY-AI',
     description: 'Advanced AI Intelligence Platform by RapXCode',
-    start_url: '/chat',
+    start_url: '/',
     display: 'standalone',
     background_color: '#08080A',
     theme_color: '#E11D48',

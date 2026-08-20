@@ -52,6 +52,24 @@ export default function ChatInput({
   const [analysisError, setAnalysisError] = useState<string>("")
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-close file upload picker when clicking outside the container
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (showFileUpload && containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowFileUpload(false)
+      }
+    }
+    if (showFileUpload) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('touchstart', handleClickOutside)
+      }
+    }
+  }, [showFileUpload])
 
   // Dynamic textarea height calculation (max 3 lines)
   useEffect(() => {
@@ -150,11 +168,10 @@ export default function ChatInput({
 
     onSend(value, attachments.length > 0 ? attachments : undefined)
 
-    if (uploadedFiles.length > 0) {
-      setUploadedFiles([])
-      setShowFileUpload(false)
-      setAnalysisError("")
-    }
+    // Always reset file state and close picker on send
+    setUploadedFiles([])
+    setShowFileUpload(false)
+    setAnalysisError("")
     
     setTimeout(() => {
       textareaRef.current?.focus()
@@ -166,7 +183,7 @@ export default function ChatInput({
   }
 
   return (
-    <div className="px-3 max-w-4xl mx-auto space-y-3 pb-safe">
+    <div ref={containerRef} className="px-3 max-w-4xl mx-auto space-y-3 pb-safe">
       
       {/* File Upload Dialog */}
       {showFileUpload && (

@@ -189,38 +189,27 @@ export default function ImageGenerator({ onClose, onGuestLimit }: ImageGenerator
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 flex-1 overflow-y-auto min-h-0">
-        {/* Model Selection - 2x2 Touch Grid */}
-        <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-          <Label className="text-xs font-bold uppercase tracking-wider text-[var(--fyf-text-secondary)]">Pilih Model Studio</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {imageModels.map((model) => (
-              <button
-                type="button"
-                key={model.id}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedModel(model.id)
-                }}
-                className={`p-3 rounded-2xl border text-left transition-all duration-200 relative ${
-                  selectedModel === model.id
-                    ? "bg-rose-500/10 border-rose-500/50 shadow-md shadow-rose-500/5"
-                    : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.05]"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-white truncate">{model.name}</div>
-                  {model.recommended && (
-                    <span className="text-[9px] font-extrabold bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded-md">
-                      PRO
-                    </span>
-                  )}
-                </div>
-                <div className="text-[10px] text-gray-400 mt-1 line-clamp-2 leading-tight">
-                  {model.description}
-                </div>
-              </button>
-            ))}
-          </div>
+        {/* Model Selection - Compact Select Bar */}
+        <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+          <Label htmlFor="model-select" className="text-xs font-bold uppercase tracking-wider text-[var(--fyf-text-secondary)]">Pilih Model Studio</Label>
+          <Select value={selectedModel} onValueChange={(value) => setSelectedModel(value)}>
+            <SelectTrigger id="model-select" className="w-full h-11 px-3.5 bg-black/40 border-white/[0.08] rounded-xl text-xs text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto bg-[#121217] border-white/[0.08] text-white">
+              {imageModels.map((model) => (
+                <SelectItem key={model.id} value={model.id} className="py-2.5 px-3 focus:bg-rose-500/10 focus:text-white cursor-pointer">
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="font-semibold text-xs text-white">{model.name}</span>
+                    <span className="text-[10px] text-gray-400 truncate max-w-[180px] sm:max-w-[260px]">({model.description})</span>
+                    {model.recommended && (
+                      <span className="text-[9px] font-extrabold bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded ml-auto">PRO</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Prompt Input */}
