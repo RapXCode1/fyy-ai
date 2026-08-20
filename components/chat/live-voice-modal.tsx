@@ -19,12 +19,13 @@ export default function LiveVoiceModal({
 
   const recognitionRef = useRef<any>(null)
   const silenceTimerRef = useRef<any>(null)
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const isComponentMounted = useRef(true)
+  const lastProcessedTextRef = useRef("")
 
-  // ── 1. Text-to-Speech (AI Speaking) ───────────────────────────────────────
-  const speakAIResponse = useCallback((text: string, onFinish: () => void) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+  // ── 1. Text-to-Speech (Crystal-Clear Indonesian Audio Engine) ───────────────
+  const playAISpeech = useCallback((text: string, onFinish: () => void) => {
+    if (typeof window === "undefined") {
       onFinish()
       return
     }
@@ -41,49 +42,88 @@ export default function LiveVoiceModal({
       return
     }
 
+    // Stop any existing audio
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause()
+        currentAudioRef.current.currentTime = 0
+      } catch {}
+      currentAudioRef.current = null
+    }
+
+    // Primary Engine: MP3 Stream via /api/tts (Works on 100% of iOS, Android, PWA, Chrome)
     try {
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.resume()
+      const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText.substring(0, 240))}`
+      const audio = new Audio(audioUrl)
+      currentAudioRef.current = audio
 
-      const utterance = new SpeechSynthesisUtterance(cleanText)
-      utterance.lang = "id-ID"
-      utterance.rate = 1.05
-      utterance.pitch = 1.0
-      utterance.volume = 1.0
-
-      const voices = window.speechSynthesis.getVoices()
-      const idVoice =
-        voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
-        voices.find((v) => v.name.toLowerCase().includes("indonesia") || v.name.toLowerCase().includes("andika"))
-
-      if (idVoice) utterance.voice = idVoice
-
-      utterance.onstart = () => {
+      audio.onplay = () => {
         if (isComponentMounted.current) {
           setCallState("speaking")
         }
       }
 
+      audio.onended = () => {
+        if (isComponentMounted.current) {
+          currentAudioRef.current = null
+          onFinish()
+        }
+      }
+
+      audio.onerror = () => {
+        // Secondary Fallback: Web SpeechSynthesis
+        fallbackSpeechSynthesis(cleanText, onFinish)
+      }
+
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          fallbackSpeechSynthesis(cleanText, onFinish)
+        })
+      }
+    } catch {
+      fallbackSpeechSynthesis(cleanText, onFinish)
+    }
+  }, [])
+
+  const fallbackSpeechSynthesis = (text: string, onFinish: () => void) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      onFinish()
+      return
+    }
+
+    try {
+      window.speechSynthesis.cancel()
+      window.speechSynthesis.resume()
+
+      const utterance = new SpeechSynthesisUtterance(text.substring(0, 200))
+      utterance.lang = "id-ID"
+      utterance.rate = 1.05
+
+      const voices = window.speechSynthesis.getVoices()
+      const idVoice =
+        voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
+        voices.find((v) => v.name.toLowerCase().includes("indonesia"))
+
+      if (idVoice) utterance.voice = idVoice
+
+      utterance.onstart = () => {
+        if (isComponentMounted.current) setCallState("speaking")
+      }
       utterance.onend = () => {
-        if (isComponentMounted.current) {
-          onFinish()
-        }
+        if (isComponentMounted.current) onFinish()
       }
-
       utterance.onerror = () => {
-        if (isComponentMounted.current) {
-          onFinish()
-        }
+        if (isComponentMounted.current) onFinish()
       }
 
-      currentUtteranceRef.current = utterance
       window.speechSynthesis.speak(utterance)
     } catch {
       onFinish()
     }
-  }, [])
+  }
 
-  // ── 2. Speech Recognition (User Listening) ────────────────────────────────
+  // ── 2. Speech Recognition (User Listening Engine) ──────────────────────────
   const stopListening = useCallback(() => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
@@ -130,45 +170,52 @@ export default function LiveVoiceModal({
           full += event.results[i][0].transcript
         }
 
-        if (full.trim()) {
-          localText = full.trim()
+        const candidate = full.trim()
+        if (candidate) {
+          localText = candidate
           setUserTranscript(localText)
 
-          // Reset silence timer: when user pauses for 1.4s, send automatically
+          // Silence timeout: when user pauses for 1.3 seconds, trigger AI response
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
           silenceTimerRef.current = setTimeout(async () => {
             if (!localText.trim() || !isComponentMounted.current) return
+            if (localText === lastProcessedTextRef.current) return
 
-            const messageToSend = localText.trim()
+            const textToSend = localText.trim()
+            lastProcessedTextRef.current = textToSend
+
             stopListening()
             setUserTranscript("")
             setCallState("thinking")
 
             try {
-              const aiReply = await onSendMessage(messageToSend)
+              const aiReply = await onSendMessage(textToSend)
               if (aiReply && isComponentMounted.current) {
                 setAiTranscript(aiReply)
-                speakAIResponse(aiReply, () => {
+                playAISpeech(aiReply, () => {
                   if (isComponentMounted.current) {
+                    lastProcessedTextRef.current = ""
                     startListening()
                   }
                 })
               } else if (isComponentMounted.current) {
+                lastProcessedTextRef.current = ""
                 startListening()
               }
             } catch {
               if (isComponentMounted.current) {
+                lastProcessedTextRef.current = ""
                 startListening()
               }
             }
-          }, 1400)
+          }, 1300)
         }
       }
 
       recognition.onerror = (event: any) => {
         if (event.error === "no-speech") return
         if (event.error === "aborted") return
-        console.warn("Live speech recognition error:", event.error)
+        console.warn("Live speech recognition notice:", event.error)
       }
 
       recognition.onend = () => {
@@ -178,15 +225,15 @@ export default function LiveVoiceModal({
       recognitionRef.current = recognition
       recognition.start()
     } catch (err) {
-      console.warn("Failed to start Live SpeechRecognition:", err)
+      console.warn("SpeechRecognition start error:", err)
     }
-  }, [onSendMessage, speakAIResponse, stopListening])
+  }, [onSendMessage, playAISpeech, stopListening])
 
   // ── 3. Lifecycle Initialization ───────────────────────────────────────────
   useEffect(() => {
     isComponentMounted.current = true
 
-    // Pre-warm Web Audio context
+    // Prime audio
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         const unlock = new SpeechSynthesisUtterance("")
@@ -195,7 +242,6 @@ export default function LiveVoiceModal({
       } catch {}
     }
 
-    // Start initial listening turn
     const timer = setTimeout(() => {
       startListening()
     }, 400)
@@ -204,15 +250,31 @@ export default function LiveVoiceModal({
       isComponentMounted.current = false
       clearTimeout(timer)
       stopListening()
+
+      if (currentAudioRef.current) {
+        try {
+          currentAudioRef.current.pause()
+          currentAudioRef.current.currentTime = 0
+        } catch {}
+        currentAudioRef.current = null
+      }
+
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try { window.speechSynthesis.cancel() } catch {}
       }
     }
   }, [startListening, stopListening])
 
-  // ── 4. Orb Tap (Interrupt AI Speech) ──────────────────────────────────────
+  // ── 4. Interrupt AI Speech ────────────────────────────────────────────────
   const handleOrbTap = () => {
     if (callState === "speaking") {
+      if (currentAudioRef.current) {
+        try {
+          currentAudioRef.current.pause()
+          currentAudioRef.current.currentTime = 0
+        } catch {}
+        currentAudioRef.current = null
+      }
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try { window.speechSynthesis.cancel() } catch {}
       }
@@ -220,7 +282,7 @@ export default function LiveVoiceModal({
     }
   }
 
-  // ── 5. Visual Styling ─────────────────────────────────────────────────────
+  // ── 5. Dynamic Visual Styling ─────────────────────────────────────────────
   const getOrbStyles = () => {
     switch (callState) {
       case "listening":
@@ -285,13 +347,12 @@ export default function LiveVoiceModal({
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-full text-[10px] text-gray-400 font-medium">
           {callState === "listening" && <Mic size={11} className="text-white animate-bounce" />}
           {callState === "speaking" && <Volume2 size={11} className="text-rose-400 animate-pulse" />}
-          <span>Percakapan Suara Real-Time Bebas Pulsa</span>
+          <span>Panggilan Suara Bebas Pulsa</span>
         </div>
       </div>
 
-      {/* Center Interactive Orb */}
+      {/* Center Interactive Orb with Audio Shockwaves */}
       <div className="relative flex items-center justify-center flex-1 w-full max-w-md">
-        {/* Ripple Shockwaves */}
         {callState !== "connecting" && (
           <>
             <div
@@ -308,7 +369,6 @@ export default function LiveVoiceModal({
           </>
         )}
 
-        {/* Central Orb */}
         <button
           type="button"
           onClick={handleOrbTap}
@@ -325,7 +385,7 @@ export default function LiveVoiceModal({
         </button>
       </div>
 
-      {/* Real-time Transcript & Subtitle Area */}
+      {/* Real-time Subtitle / Transcript Area */}
       <div className="w-full max-w-md min-h-[80px] mb-4 flex flex-col items-center justify-center text-center px-4">
         {callState === "listening" && userTranscript && (
           <p className="text-gray-300 text-sm sm:text-base font-medium italic animate-fade-in line-clamp-3">
