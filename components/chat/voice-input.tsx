@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Mic, Square } from "lucide-react"
+import { Mic, Square, PhoneCall } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useVoiceInput } from "@/hooks/use-voice-input"
 
@@ -15,57 +15,36 @@ interface VoiceInputProps {
   isLiveMode?: boolean
 }
 
-export default function VoiceInput({ onTranscript, disabled, onLiveModeToggle, onRecordingEnd, onRecordingStateChange, liveModeTrigger = 0, isLiveMode = false }: VoiceInputProps) {
-  const { isRecording, isSupported, permissionState, requestMicrophonePermission, startRecording, stopRecording } = useVoiceInput({
-    onTranscript: (text) => {
-      onTranscript(text)
-      setError("")
-      if (errorTimeout) {
-        clearTimeout(errorTimeout)
-        setErrorTimeout(null)
-      }
-    },
-    onError: (error) => {
-      setError(error)
-      if (errorTimeout) clearTimeout(errorTimeout)
-      const timeout = setTimeout(() => {
-        setError("")
-        setErrorTimeout(null)
-      }, 5000)
-      setErrorTimeout(timeout)
-    },
-    onEnd: () => {
-      onRecordingEnd?.()
-    }
-  })
+export default function VoiceInput({
+  onTranscript,
+  disabled,
+  onLiveModeToggle,
+  onRecordingEnd,
+  onRecordingStateChange,
+  liveModeTrigger = 0,
+  isLiveMode = false,
+}: VoiceInputProps) {
   const [error, setError] = useState<string>("")
-  const [errorTimeout, setErrorTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
-  
-  // Swipe-to-lock logic
-  const [startY, setStartY] = useState<number | null>(null)
-  const [currentY, setCurrentY] = useState<number | null>(null)
-  const [showSwipeIndicator, setShowSwipeIndicator] = useState(false)
+
+  const { isRecording, isSupported, permissionState, requestMicrophonePermission, startRecording, stopRecording } =
+    useVoiceInput({
+      onTranscript: (text) => {
+        onTranscript(text)
+        setError("")
+      },
+      onError: (err) => {
+        setError(err)
+        setTimeout(() => setError(""), 5000)
+      },
+      onEnd: () => {
+        onRecordingEnd?.()
+      },
+    })
 
   // Notify parent of recording state changes
   useEffect(() => {
     onRecordingStateChange?.(isRecording)
   }, [isRecording, onRecordingStateChange])
-
-  // Swipe indicator display duration (auto fade-out after 2.5s)
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
-    if (isRecording && startY !== null) {
-      setShowSwipeIndicator(true)
-      timer = setTimeout(() => {
-        setShowSwipeIndicator(false)
-      }, 2500)
-    } else {
-      setShowSwipeIndicator(false)
-    }
-    return () => {
-      if (timer) clearTimeout(timer)
-    }
-  }, [isRecording, startY])
 
   // Listen for trigger to restart recording in Live Mode
   useEffect(() => {
@@ -74,186 +53,114 @@ export default function VoiceInput({ onTranscript, disabled, onLiveModeToggle, o
     }
   }, [liveModeTrigger, isLiveMode, isRecording, disabled, startRecording])
 
-  const handlePointerDown = async (e: React.PointerEvent<HTMLButtonElement>) => {
+  const handleMicClick = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
     if (disabled) return
 
-    if (permissionState === 'denied') {
-      const granted = await requestMicrophonePermission()
-      if (!granted) return
-    }
-
-    // Unlock browser audio engine for TTS (required by Chrome/Safari to allow async speaking later)
+    // Unlock browser audio context for subsequent TTS
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const unlockUtterance = new SpeechSynthesisUtterance("")
-      unlockUtterance.volume = 0
-      window.speechSynthesis.speak(unlockUtterance)
+      try {
+        const unlock = new SpeechSynthesisUtterance("")
+        unlock.volume = 0
+        window.speechSynthesis.speak(unlock)
+      } catch {}
     }
 
-    setStartY(e.clientY)
-    setCurrentY(e.clientY)
-    if (!isRecording && !isLiveMode) {
+    if (isRecording) {
+      stopRecording()
+      onRecordingEnd?.()
+    } else {
+      if (permissionState === "denied") {
+        const ok = await requestMicrophonePermission()
+        if (!ok) return
+      }
       startRecording()
     }
   }
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (startY === null || isLiveMode) return
-    setCurrentY(e.clientY)
-    
-    // If dragged up by more than 50px
-    if (startY - e.clientY > 50) {
-      onLiveModeToggle?.(true)
-      setStartY(null)
-      setCurrentY(null)
-    }
+  const handleStartLiveCall = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onLiveModeToggle?.(true)
   }
-
-  const handlePointerUp = () => {
-    if (!isLiveMode && startY !== null) {
-      // Normal click or release before locking
-      if (isRecording) {
-        stopRecording()
-      }
-    }
-    setStartY(null)
-    setCurrentY(null)
-  }
-
-  useEffect(() => {
-    if (!isSupported) {
-      setError("Speech recognition not supported in your browser")
-      if (errorTimeout) clearTimeout(errorTimeout)
-      const timeout = setTimeout(() => {
-        setError("")
-        setErrorTimeout(null)
-      }, 5000)
-      setErrorTimeout(timeout)
-    }
-  }, [isSupported])
-
-  useEffect(() => {
-    if (isRecording) {
-      setError("")
-      if (errorTimeout) {
-        clearTimeout(errorTimeout)
-        setErrorTimeout(null)
-      }
-    }
-  }, [isRecording])
-
-  useEffect(() => {
-    if (disabled && isRecording) {
-      stopRecording()
-    }
-  }, [disabled, isRecording, stopRecording])
-
-  const handleErrorClick = () => {
-    setError("")
-    if (errorTimeout) {
-      clearTimeout(errorTimeout)
-      setErrorTimeout(null)
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      if (errorTimeout) clearTimeout(errorTimeout)
-    }
-  }, [errorTimeout])
 
   if (!isSupported) {
     return (
-      <Button 
-        disabled 
-        variant="ghost" 
-        title="Speech recognition not supported" 
-        className="opacity-50 cursor-not-allowed h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-lg"
+      <Button
+        disabled
+        variant="ghost"
+        title="Speech recognition not supported in this browser"
+        className="opacity-40 cursor-not-allowed h-9 w-9 p-0 rounded-xl"
       >
-        <Mic className="h-[18px] w-[18px] sm:h-[22px] sm:w-[22px]" />
+        <Mic className="h-4 w-4" />
       </Button>
     )
   }
 
-  const dragDistance = startY !== null && currentY !== null ? Math.max(0, startY - currentY) : 0
-  const transformY = isLiveMode ? 0 : -dragDistance
-
   if (isLiveMode) {
     return (
       <div className="flex items-center gap-2 animate-fade-in">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-full animate-pulse">
-          <Mic size={14} className="text-red-500" />
-          <span className="text-xs font-semibold text-red-500">Live Voice Active</span>
-        </div>
-        <Button
+        <button
           onClick={() => {
             onLiveModeToggle?.(false)
             stopRecording()
           }}
-          variant="destructive"
-          size="sm"
-          className="rounded-full px-4 h-8"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-lg shadow-red-500/20 transition-all animate-pulse"
         >
-          End
-        </Button>
+          <Square size={12} />
+          <span>End Live Call</span>
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="relative touch-none">
+    <div className="relative flex items-center gap-1">
+      {/* Live Call Button (Phone Call Mode) */}
       <Button
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onPointerLeave={handlePointerUp}
+        type="button"
+        variant="ghost"
+        onClick={handleStartLiveCall}
         disabled={disabled}
-        variant={isRecording ? "destructive" : "ghost"}
-        className={`${isRecording ? "ring-2 ring-red-400/50" : ""} h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-lg transition-colors duration-200 relative z-10 flex items-center justify-center`}
-        title={isRecording ? "Swipe up to lock Live Voice Mode" : "Hold or click for voice input"}
-        style={{ transform: `translateY(${transformY}px)` }}
+        title="Start Realtime Live Voice Call with FYY-AI"
+        className="h-9 w-9 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center micro-btn"
       >
-        {isRecording ? (
-          <Square className="h-[18px] w-[18px] sm:h-[22px] sm:w-[22px]" />
-        ) : (
-          <Mic className="h-[18px] w-[18px] sm:h-[22px] sm:w-[22px]" />
-        )}
+        <PhoneCall className="h-4 w-4" />
       </Button>
 
-      {/* Swipe up indicator */}
-      {isRecording && !isLiveMode && showSwipeIndicator && dragDistance < 50 && (
-        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-fade-in pointer-events-none">
-          <div className="text-xs text-muted-foreground whitespace-nowrap mb-1">Swipe Up to Lock</div>
-          <div className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-          <div className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce mt-1" style={{ animationDelay: '0.2s' }} />
-          <div className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce mt-1" style={{ animationDelay: '0.4s' }} />
+      {/* Main Mic Button (Tap to record, tap to stop) */}
+      <Button
+        type="button"
+        variant={isRecording ? "destructive" : "ghost"}
+        onClick={handleMicClick}
+        disabled={disabled}
+        className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 flex items-center justify-center micro-btn ${
+          isRecording
+            ? "bg-red-600 text-white shadow-lg shadow-red-500/40 animate-pulse ring-2 ring-red-400"
+            : "text-[var(--fyf-text-secondary)] hover:text-[var(--fyf-text)] hover:bg-[var(--fyf-border)]"
+        }`}
+        title={isRecording ? "Tap to finish recording" : "Tap to speak (Voice Recording)"}
+      >
+        {isRecording ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-4 w-4" />}
+      </Button>
+
+      {/* Recording indicator badge */}
+      {isRecording && (
+        <div className="absolute -top-9 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-lg flex items-center gap-1 animate-fade-in pointer-events-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+          Listening...
         </div>
       )}
 
-      {/* Recording indicator */}
-      {isRecording && startY === null && (
-        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none animate-fade-in">
-          🎤 Listening...
-        </div>
-      )}
-
-      {permissionState === 'denied' && !isRecording && (
-        <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 pointer-events-none animate-fade-in">
-          Microphone permission denied. Izinkan akses mikrofon di pengaturan aplikasi.
-        </div>
-      )}
-
-      {/* Error tooltip with arrow */}
+      {/* Error alert */}
       {error && (
-        <div className="absolute -top-32 left-1/2 transform -translate-x-1/2 z-10">
-          <div
-            className="bg-destructive text-destructive-foreground text-xs px-3 py-2 rounded shadow-lg max-w-56 text-center leading-tight relative cursor-pointer hover:bg-destructive/80 transition-colors"
-            onClick={handleErrorClick}
-            title="Click to dismiss"
-          >
-            {error}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-destructive"></div>
-          </div>
+        <div
+          onClick={() => setError("")}
+          className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-red-950 border border-red-500/50 text-red-200 text-[10px] px-2 py-1 rounded-lg whitespace-nowrap shadow-xl cursor-pointer animate-fade-in"
+        >
+          {error}
         </div>
       )}
     </div>

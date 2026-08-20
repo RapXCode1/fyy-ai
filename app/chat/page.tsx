@@ -1295,6 +1295,22 @@ export default function ChatPage() {
 
       </div>
 
+      {/* Live Voice Modal (Full Screen Call Experience) */}
+      {isLiveMode && (
+        <LiveVoiceModal
+          state={isSpeaking ? "speaking" : isLoading || isReceiving ? "thinking" : "listening"}
+          onEndCall={() => {
+            setIsLiveMode(false)
+            stopSpeech()
+          }}
+          onInterrupt={() => {
+            stopSpeech()
+          }}
+          userTranscript={input}
+          aiTranscript={messages.slice().reverse().find((m) => m.role === "assistant")?.content}
+        />
+      )}
+
       {/* Settings Modal */}
       <div className="relative z-20" data-panel>
         <SettingsPanel

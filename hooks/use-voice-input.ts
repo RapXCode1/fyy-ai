@@ -2,57 +2,11 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 
-// Type declarations for Speech Recognition API
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
+    SpeechRecognition: any
+    webkitSpeechRecognition: any
   }
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  start(): void
-  stop(): void
-  abort(): void
-  onstart: ((this: SpeechRecognition, ev: Event) => void) | null
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
-  onend: ((this: SpeechRecognition, ev: Event) => void) | null
-}
-
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number
-  results: SpeechRecognitionResultList
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string
-}
-
-interface SpeechRecognitionResultList {
-  readonly length: number
-  item(_index: number): SpeechRecognitionResult
-  [_index: number]: SpeechRecognitionResult
-}
-
-interface SpeechRecognitionResult {
-  readonly length: number
-  item(_index: number): SpeechRecognitionAlternative
-  [_index: number]: SpeechRecognitionAlternative
-  isFinal: boolean
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string
-  confidence: number
-}
-
-declare var SpeechRecognition: {
-  prototype: SpeechRecognition
-  new(): SpeechRecognition
 }
 
 interface UseVoiceInputOptions {
@@ -63,113 +17,94 @@ interface UseVoiceInputOptions {
 
 export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOptions = {}) {
   const [isRecording, setIsRecording] = useState(false)
-  const [isSupported, setIsSupported] = useState(false)
-  const [permissionState, setPermissionState] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
-  
+  const [isSupported, setIsSupported] = useState(true)
+  const [permissionState, setPermissionState] = useState<"granted" | "denied" | "prompt" | "unknown">("unknown")
+  const recognitionRef = useRef<any>(null)
   const callbacksRef = useRef({ onTranscript, onError, onEnd })
-  
+
   useEffect(() => {
     callbacksRef.current = { onTranscript, onError, onEnd }
   }, [onTranscript, onError, onEnd])
 
-  const updatePermissionState = useCallback(async () => {
-    try {
-      if (typeof window === 'undefined') return
-      const win = window as any
-
-      if (navigator.permissions) {
-        const result = await navigator.permissions.query({ name: 'microphone' as PermissionName })
-        setPermissionState(result.state as 'granted' | 'denied' | 'prompt')
-      } else {
-        setPermissionState('prompt')
-      }
-    } catch {
-      setPermissionState('unknown')
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const supported = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
+      setIsSupported(supported)
     }
   }, [])
 
-  useEffect(() => {
-    updatePermissionState()
-  }, [updatePermissionState])
-
-  const requestMicrophonePermission = useCallback(async () => {
+  const requestMicrophonePermission = useCallback(async (): Promise<boolean> => {
     try {
-      if (typeof window === 'undefined') return false
-      const win = window as any
-
-      await navigator.mediaDevices.getUserMedia({ audio: true })
-      setPermissionState('granted')
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+        return true
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Stop stream immediately after permission is granted
+      stream.getTracks().forEach((track) => track.stop())
+      setPermissionState("granted")
       return true
-    } catch (error: any) {
-      const denied = error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError'
-      setPermissionState(denied ? 'denied' : 'unknown')
+    } catch (err: any) {
+      const isDenied = err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError"
+      setPermissionState(isDenied ? "denied" : "unknown")
       callbacksRef.current.onError?.(
-        denied
-          ? 'Microphone permission denied. Please enable microphone access in your app settings.'
-          : 'Unable to request microphone access.'
+        isDenied
+          ? "Izin mikrofon ditolak. Silakan aktifkan izin mikrofon di pengaturan browser/HP."
+          : "Gagal meminta izin mikrofon."
       )
       return false
     }
   }, [])
 
-  useEffect(() => {
-    callbacksRef.current = { onTranscript, onError, onEnd }
-  }, [onTranscript, onError, onEnd])
+  const startRecording = useCallback(async () => {
+    if (isRecording) return
 
-  useEffect(() => {
-    // Check if Speech Recognition is supported
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      setIsSupported(true)
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      const recognition = new SpeechRecognition()
+    // 1. Prime / Request microphone access
+    const granted = await requestMicrophonePermission()
+    if (!granted && permissionState === "denied") return
 
-      recognition.continuous = false
+    // 2. Instantiate fresh SpeechRecognition for Mobile Web/PWA
+    const SpeechRecognitionClass =
+      typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null
+
+    if (!SpeechRecognitionClass) {
+      callbacksRef.current.onError?.("Browser ini belum mendukung speech recognition.")
+      return
+    }
+
+    try {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort() } catch {}
+      }
+
+      const recognition = new SpeechRecognitionClass()
+      recognition.continuous = true
       recognition.interimResults = true
-      recognition.lang = 'id-ID' // Set to Indonesian to improve accuracy
+      recognition.lang = "id-ID"
 
       recognition.onstart = () => {
         setIsRecording(true)
       }
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = ""
-        let interimTranscript = ""
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript
-          } else {
-            interimTranscript += transcript
-          }
+      recognition.onresult = (event: any) => {
+        let fullTranscript = ""
+        for (let i = 0; i < event.results.length; i++) {
+          fullTranscript += event.results[i][0].transcript
         }
-
-        if (finalTranscript) {
-          callbacksRef.current.onTranscript?.(finalTranscript)
+        if (fullTranscript.trim()) {
+          callbacksRef.current.onTranscript?.(fullTranscript)
         }
       }
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        let errorMsg = "Voice input failed"
-        switch (event.error) {
-          case 'no-speech':
-            errorMsg = "No speech detected. Try speaking louder or closer to microphone."
-            break
-          case 'audio-capture':
-            errorMsg = "Microphone not accessible. Check your audio settings."
-            break
-          case 'not-allowed':
-            errorMsg = "Microphone permission denied. Click the microphone icon and allow access."
-            break
-          case 'network':
-            errorMsg = "Network error. Check your internet connection."
-            break
-          case 'service-not-allowed':
-            errorMsg = "Voice recognition unavailable in your region."
-            break
-          default:
-            errorMsg = "Voice input unavailable. Try typing your message instead."
+      recognition.onerror = (event: any) => {
+        if (event.error === "no-speech") return
+        if (event.error === "aborted") return
+
+        let errorMsg = "Pengenalan suara terganggu."
+        if (event.error === "not-allowed") {
+          errorMsg = "Izin mikrofon ditolak. Mohon izinkan akses mic."
+          setPermissionState("denied")
+        } else if (event.error === "network") {
+          errorMsg = "Kendala jaringan saat mengenali suara."
         }
         callbacksRef.current.onError?.(errorMsg)
         setIsRecording(false)
@@ -181,86 +116,28 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
       }
 
       recognitionRef.current = recognition
-    } else {
-      setIsSupported(false)
-    }
-  }, []) // Empty dependency array ensures we only set up recognition once
-
-  const startRecording = useCallback(async () => {
-    if (permissionState !== 'granted') {
-      const ok = await requestMicrophonePermission()
-      if (!ok) return
-    }
-    if (isRecording) return
-
-    // Create a fresh recognition instance every call (needed on iOS/Android)
-    const SpeechRecognitionClass = (typeof window !== 'undefined')
-      ? (window.SpeechRecognition || window.webkitSpeechRecognition)
-      : null
-    if (!SpeechRecognitionClass) {
-      onError?.('Voice recognition is not supported in this browser.')
-      return
-    }
-
-    const recognition = new SpeechRecognitionClass()
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = 'id-ID'
-
-    recognition.onstart = () => setIsRecording(true)
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript
-        }
-      }
-      if (finalTranscript) callbacksRef.current.onTranscript?.(finalTranscript)
-    }
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      let errorMsg = 'Voice input unavailable. Try typing instead.'
-      if (event.error === 'not-allowed') errorMsg = 'Microphone permission denied. Please enable access.'
-      else if (event.error === 'no-speech') errorMsg = 'No speech detected. Please try again.'
-      else if (event.error === 'network') errorMsg = 'Network error during voice recognition.'
-      callbacksRef.current.onError?.(errorMsg)
-      setIsRecording(false)
-    }
-
-    recognition.onend = () => {
-      setIsRecording(false)
-      callbacksRef.current.onEnd?.()
-    }
-
-    recognitionRef.current = recognition
-
-    try {
       recognition.start()
-    } catch (error) {
-      onError?.('Failed to start speech recognition. Please try again.')
+    } catch (err) {
+      setIsRecording(false)
+      callbacksRef.current.onError?.("Gagal memulai rekaman suara.")
     }
-  }, [isRecording, onError, permissionState, requestMicrophonePermission])
+  }, [isRecording, permissionState, requestMicrophonePermission])
 
   const stopRecording = useCallback(() => {
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.abort()
-      } catch (error) {
-        console.error("Failed to abort speech recognition:", error)
+        recognitionRef.current.stop()
+      } catch {
+        try { recognitionRef.current.abort() } catch {}
       }
     }
+    setIsRecording(false)
   }, [])
 
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort()
-        } catch {
-          // ignore cleanup errors
-        }
-        recognitionRef.current = null
+        try { recognitionRef.current.abort() } catch {}
       }
     }
   }, [])
@@ -275,27 +152,18 @@ export function useVoiceInput({ onTranscript, onError, onEnd }: UseVoiceInputOpt
   }
 }
 
+/**
+ * Robust Text-to-Speech (TTS) hook with mobile audio unlock & Indonesian voice selection
+ */
 export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => void }) {
   const [isSpeaking, setIsSpeaking] = useState(false)
-  const [audioReady, setAudioReady] = useState(true)
+  const optionsRef = useRef(options)
 
-  const ensureAudioContext = useCallback(async () => {
-    if (typeof window === 'undefined') return
-    const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext
-    if (!AudioCtx) return
+  useEffect(() => {
+    optionsRef.current = options
+  }, [options])
 
-    try {
-      const context = new AudioCtx()
-      if (context.state === 'suspended') {
-        await context.resume()
-      }
-      await context.close()
-    } catch (error) {
-      console.warn('AudioContext initialization failed:', error)
-    }
-  }, [])
-
-  // Force loading of voices as soon as the hook is used
+  // Pre-warm audio engine on mount & voice change
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const loadVoices = () => {
@@ -306,122 +174,76 @@ export function useSpeechOutput(options?: { onStart?: () => void; onEnd?: () => 
     }
   }, [])
 
-  // Listen to native Android TTS events
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      (window as any).onNativeTTSStart = () => {
-        setIsSpeaking(true)
-        options?.onStart?.()
-      };
-      (window as any).onNativeTTSEnd = () => {
-        setIsSpeaking(false)
-        options?.onEnd?.()
-      };
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        delete (window as any).onNativeTTSStart
-        delete (window as any).onNativeTTSEnd
-      }
-    }
-  }, [options])
-
-
-
   const speak = useCallback((text: string) => {
-    // Clean Markdown
-    let cleanText = text
-      .replace(/```[\s\S]*?```/g, " (Berikut adalah blok kode) ") // Summarize code blocks
-      .replace(/[*_#`~>]/g, "") // Remove formatting characters
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Extract text from links
-      .replace(/-\s/g, "") // Remove list hyphens
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      optionsRef.current?.onEnd?.()
+      return
+    }
+
+    // Clean text for speech
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, " Berikut adalah blok kode. ")
+      .replace(/[*_#`~>]/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/-\s/g, "")
       .trim()
 
     if (!cleanText) {
       setIsSpeaking(false)
-      options?.onEnd?.()
+      optionsRef.current?.onEnd?.()
       return
     }
 
-    // Check if running on Android native TTS
-    if (typeof window !== "undefined" && (window as any).AndroidTTS) {
-      try {
-        (window as any).AndroidTTS.speak(cleanText)
-        return
-      } catch (err) {
-        console.error("Native Android TTS failed, falling back to Web Speech:", err)
-      }
-    }
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel() // Stop any ongoing speech
-
-      // If no TTS engine is available in the environment, fail fast.
-      if (!window.speechSynthesis) {
-        console.warn('SpeechSynthesis unavailable in this environment')
-        setAudioReady(false)
-        options?.onEnd?.()
-        return
-      }
-
-      // Attempt to find the most natural male voice
-      const voices = window.speechSynthesis.getVoices()
-      
-      let bestVoice = voices.find(v => v.lang.includes('id') && (v.name.toLowerCase().includes('andika') || v.name.toLowerCase().includes('male')))
-      if (!bestVoice) {
-        bestVoice = voices.find(v => v.lang.includes('id') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Premium')))
-      }
-      if (!bestVoice) {
-        bestVoice = voices.find(v => v.lang.includes('id'))
-      }
+    try {
+      window.speechSynthesis.cancel()
+      window.speechSynthesis.resume()
 
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.lang = "id-ID"
-      if (bestVoice) {
-        utterance.voice = bestVoice
-      }
-
-      utterance.rate = 1.0
+      utterance.rate = 1.05
       utterance.pitch = 1.0
       utterance.volume = 1.0
 
+      const voices = window.speechSynthesis.getVoices()
+      const indonesianVoice =
+        voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
+        voices.find((v) => v.name.toLowerCase().includes("indonesia"))
+
+      if (indonesianVoice) {
+        utterance.voice = indonesianVoice
+      }
+
       utterance.onstart = () => {
         setIsSpeaking(true)
-        options?.onStart?.()
+        optionsRef.current?.onStart?.()
       }
 
       utterance.onend = () => {
         setIsSpeaking(false)
-        options?.onEnd?.()
+        optionsRef.current?.onEnd?.()
       }
 
-      utterance.onerror = (e) => {
-        console.error("TTS SpeechSynthesis Error:", e)
+      utterance.onerror = () => {
         setIsSpeaking(false)
-        options?.onEnd?.()
+        optionsRef.current?.onEnd?.()
       }
 
       window.speechSynthesis.speak(utterance)
+    } catch {
+      setIsSpeaking(false)
+      optionsRef.current?.onEnd?.()
     }
-  }, [options, ensureAudioContext])
+  }, [])
 
   const stop = useCallback(() => {
-    if (typeof window !== "undefined" && (window as any).AndroidTTS) {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        (window as any).AndroidTTS.stop()
-        setIsSpeaking(false)
-        options?.onEnd?.()
-        return
-      } catch (err) {
-        console.error("Native Android TTS stop failed:", err)
-      }
-    }
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel()
+        window.speechSynthesis.cancel()
+      } catch {}
       setIsSpeaking(false)
+      optionsRef.current?.onEnd?.()
     }
-  }, [options])
+  }, [])
 
   return {
     isSpeaking,
