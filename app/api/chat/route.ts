@@ -148,7 +148,7 @@ export async function POST(req: Request) {
       try {
         const currentModelName = MODEL_NAME_MAP[modelToTry] || "FYY-AI Engine"
         
-        const coreIdentityPrompt = `[ CORE IDENTITY & RE-BRANDING DIRECTIVE - HIGHEST PRIORITY ]
+        const coreIdentityPrompt = `[ CORE IDENTITY & CONTEXTUAL BEHAVIOR DIRECTIVE - HIGHEST PRIORITY ]
 Kamu adalah FYY-AI, asisten kecerdasan buatan multi-modal generasi masa depan yang dibangun dan dikembangkan secara mandiri oleh RapXCode (Rhafi Al Ghifari).
 Saat ini kamu sedang merespons pengguna menggunakan sub-model: **${currentModelName}** (infrastruktur FYY-GROQ SYSTEM INTELLIGENCE).
 
@@ -157,12 +157,10 @@ Saat ini kamu sedang merespons pengguna menggunakan sub-model: **${currentModelN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. DILARANG KERAS mengaku atau menyebut dirimu sebagai "GPT-4", "GPT-3", "ChatGPT", "OpenAI", "Meta Llama", "Alibaba", atau produk perusahaan lain.
 2. Identitas satu-satunya dari dirimu adalah: **FYY-AI** yang dikembangkan oleh **RapXCode**.
-3. Semua model dalam ekosistem FYY-AI saling terhubung dan terintegrasi sebagai satu kesatuan arsitektur cerdas yang kohesif.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧠 PENGETAHUAN LENGKAP EKOSISTEM MODEL FYY-AI:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Ketika ditanya mengenai model apa saja yang kamu miliki, kamu WAJIB menjawab dengan ekosistem terpadu ini:
+3. JANGAN PERNAH menampilkan pemikiran internal, tag <think>, atau analisis batin ke pengguna. Langsung berikan jawaban finalmu yang rapi dan bersih.
+4. ATURAN RESPON KONTEKSTUAL:
+   - Jika pengguna hanya mengirim sapaan sederhana (seperti "tes", "halo", "hai", "p", "assalamualaikum"), jawablah dengan ramah, singkat, dan tanyakan apa yang bisa dibantu. JANGAN membacakan seluruh daftar model jika tidak diminta!
+   - HANYA jika pengguna secara spesifik BERTANYA tentang model apa saja yang kamu miliki, kemampuanmu, atau arsitekturmu, jelaskan ekosistem lengkap 5 Chat + 1 Vision + 4 Image Models berikut:
 
 🌟 5 MODEL UTAMA CORE AI CHAT (FYY-AI MODEL):
 1. **FYY-Llama 3.3 (PRO)**: Model Flagship untuk penalaran logika kompleks, pemecahan masalah rumit, analisis data mendalam, dan coding pemrograman profesional.
@@ -193,7 +191,7 @@ Semua model di atas saling terhubung dalam satu jaringan kecerdasan buatan FYY-A
           ],
           stream: true,
           temperature: globalSettings.temperature,
-          max_tokens: globalSettings.maxTokens,
+          max_tokens: 4096,
           top_p: globalSettings.topP,
         })
         usedModel = modelToTry
@@ -215,11 +213,56 @@ Semua model di atas saling terhubung dalam satu jaringan kecerdasan buatan FYY-A
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
+        let insideThinkTag = false
+        let pendingBuffer = ""
+
         try {
           for await (const chunk of response) {
-            const content = chunk.choices[0]?.delta?.content || ""
-            if (content) {
-              const data = JSON.stringify({ content })
+            const rawContent = chunk.choices[0]?.delta?.content || ""
+            if (!rawContent) continue
+
+            pendingBuffer += rawContent
+
+            // Filter out <think> ... </think> tags
+            while (pendingBuffer.length > 0) {
+              if (insideThinkTag) {
+                const endTagIndex = pendingBuffer.indexOf("</think>")
+                if (endTagIndex !== -1) {
+                  insideThinkTag = false
+                  pendingBuffer = pendingBuffer.substring(endTagIndex + 8).replace(/^\s+/, "")
+                } else {
+                  pendingBuffer = ""
+                  break
+                }
+              } else {
+                const startTagIndex = pendingBuffer.indexOf("<think>")
+                if (startTagIndex !== -1) {
+                  const beforeText = pendingBuffer.substring(0, startTagIndex)
+                  if (beforeText) {
+                    const data = JSON.stringify({ content: beforeText })
+                    controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+                  }
+                  insideThinkTag = true
+                  pendingBuffer = pendingBuffer.substring(startTagIndex + 7)
+                } else {
+                  // If buffer might be part of an upcoming <think> tag, wait
+                  if (pendingBuffer.endsWith("<") || pendingBuffer.endsWith("<t") || pendingBuffer.endsWith("<th") || pendingBuffer.endsWith("<thi") || pendingBuffer.endsWith("<thin") || pendingBuffer.endsWith("<think")) {
+                    break
+                  } else {
+                    const data = JSON.stringify({ content: pendingBuffer })
+                    controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+                    pendingBuffer = ""
+                  }
+                }
+              }
+            }
+          }
+
+          // Emit any remaining non-thinking text
+          if (pendingBuffer && !insideThinkTag) {
+            const cleanText = pendingBuffer.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\/?think>/gi, "")
+            if (cleanText) {
+              const data = JSON.stringify({ content: cleanText })
               controller.enqueue(encoder.encode(`data: ${data}\n\n`))
             }
           }
