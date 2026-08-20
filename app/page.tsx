@@ -52,24 +52,25 @@ export default function LandingPage() {
   ]
 
   const stats = [
-    { value: "4+", label: "AI Models" },
-    { value: "50K+", label: "Users" },
-    { value: "1K+", label: "Conversations Today" },
+    { value: "10", label: "FYY-AI Models" },
+    { value: "100%", label: "Gratis Tanpa Batas" },
+    { value: "50K+", label: "Active Users" },
     { value: "∞", label: "Possibilities" },
   ]
 
   const features = [
     { icon: MessageSquare, title: "Advanced Chat", desc: "Multi-model AI chat with real-time streaming responses and rich markdown rendering.", color: "#E11D48" },
-    { icon: Mic, title: "Voice I/O", desc: "Speak naturally. Get intelligent spoken responses powered by native Android TTS.", color: "#F43F5E" },
-    { icon: ImageIcon, title: "Image Generation", desc: "Create stunning visuals from text prompts via HuggingFace AI models.", color: "#E11D48" },
-    { icon: FileText, title: "File Analysis", desc: "Upload documents, images, and files for intelligent multimodal analysis.", color: "#FB7185" },
+    { icon: Mic, title: "Live Voice Mode", desc: "Speak naturally in real-time phone-call style with ultra-low latency voice responses.", color: "#F43F5E" },
+    { icon: ImageIcon, title: "Image Studio (4 Models)", desc: "Create photorealistic and cinematic visuals with FLUX & Realistic XL diffusion models.", color: "#E11D48" },
+    { icon: FileText, title: "Multimodal Vision & Docs", desc: "Scan OCR, inspect diagrams, and analyze documents with FYY-Vision multimodal engine.", color: "#FB7185" },
   ]
 
   const models = [
-    { name: "FYY-Llama 3.3", sub: "PRO · Ultimate Performance", badge: "Popular", dot: "#E11D48" },
-    { name: "FYY-Llama 4 Scout", sub: "Next-gen Reasoning", badge: "New", dot: "#F43F5E" },
-    { name: "FYY-GPT-OSS 120B", sub: "High Performance", badge: "", dot: "#FB7185" },
-    { name: "FYY-Qwen 3 32B", sub: "Super Reasoning", badge: "", dot: "#E11D48" },
+    { name: "FYY-Llama 3.3", sub: "PRO · Flagship Reasoning & Code", badge: "Popular", dot: "#E11D48" },
+    { name: "FYY-Llama 4 Scout", sub: "Next-gen Multimodal Reasoning", badge: "New", dot: "#F43F5E" },
+    { name: "FYY-GPT-OSS 120B", sub: "Elite Open Intelligence 120B", badge: "Elite", dot: "#FB7185" },
+    { name: "FYY-Qwen 3 32B", sub: "Math, Science & Multilingual", badge: "", dot: "#E11D48" },
+    { name: "FYY-Llama 3.1 Fast", sub: "Ultra-low Latency Real-time Chat", badge: "Instant", dot: "#10B981" },
   ]
 
   // Footer link groups (will be updated from server-side detection)

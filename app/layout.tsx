@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -10,14 +9,6 @@ import "./globals.css"
 
 import { ClerkProvider } from "@clerk/nextjs"
 import type { Viewport } from "next"
-
-// Preload Inter font with zero render-blocking
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-  weight: ["400", "500", "600", "700", "800"],
-})
 
 export const viewport: Viewport = {
   themeColor: "#000000",
@@ -66,8 +57,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider afterSignOutUrl="/">
-      <html lang="en" className={inter.variable} suppressHydrationWarning>
-        <body className={`font-sans antialiased ${inter.className}`}>
+      <html lang="en" suppressHydrationWarning>
+        <body className="font-sans antialiased">
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <ThemeStyleProvider />
             <ClientOnlyProviders />

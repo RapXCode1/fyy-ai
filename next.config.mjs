@@ -1,13 +1,36 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
 const baseConfig = {
-  // Enable React strict mode and SWC minification
+  // Enable React strict mode and compression
   reactStrictMode: true,
+  compress: true,
+  productionBrowserSourceMaps: false,
 
-  // Image handling – use remotePatterns (Next 16) instead of deprecated domains
+  // Image handling – AVIF & WebP for maximum compression and mobile speed
   images: {
-    formats: ['image/webp'],
-    remotePatterns: [{ hostname: 'fyy-ai.vercel.app' }],
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      { hostname: 'fyy-ai.vercel.app' },
+      { hostname: 'images.unsplash.com' },
+      { hostname: 'api-inference.huggingface.co' },
+      { hostname: '*.supabase.co' },
+      { hostname: 'img.clerk.com' },
+    ],
+  },
+
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
+
+  // Optimize package imports for extreme tree-shaking & smaller client bundles
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      '@clerk/nextjs',
+      '@vercel/analytics',
+      '@vercel/speed-insights',
+    ],
   },
 
   env: {
@@ -17,7 +40,7 @@ const baseConfig = {
     NEXT_PUBLIC_AUTH_CALLBACK: 'https://fyy-ai.vercel.app/api/auth/clerk/callback',
   },
 
-  // Proxy Clerk script (middleware deprecated → proxy)
+  // Proxy Clerk script
   async rewrites() {
     return [
       {
