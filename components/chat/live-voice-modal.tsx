@@ -21,9 +21,10 @@ export default function LiveVoiceModal({
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const isComponentMounted = useRef(true)
   const latestTranscriptRef = useRef("")
-  const isThinkingOrSpeakingRef = useRef(false)
+  const isProcessingRef = useRef(false)
+  const watchdogTimerRef = useRef<any>(null)
 
-  // ── 1. Text-to-Speech (Play AI Speech Audio) ──────────────────────────────
+  // ── 1. Guaranteed Audio Playback Engine ───────────────────────────────────
   const playSpeech = useCallback((text: string, onFinish: () => void) => {
     if (typeof window === "undefined" || !isComponentMounted.current) {
       onFinish()
@@ -31,7 +32,7 @@ export default function LiveVoiceModal({
     }
 
     const cleanText = text
-      .replace(/```[\s\S]*?```/g, " Berikut adalah blok kode. ")
+      .replace(/```[\s\S]*?```/g, " Berikut blok kode. ")
       .replace(/[*_#`~>]/g, "")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .replace(/-\s/g, "")
@@ -42,7 +43,7 @@ export default function LiveVoiceModal({
       return
     }
 
-    // Stop ongoing audio
+    // Stop ongoing audio/speech
     if (currentAudioRef.current) {
       try {
         currentAudioRef.current.pause()
@@ -50,92 +51,101 @@ export default function LiveVoiceModal({
       } catch {}
       currentAudioRef.current = null
     }
+    if ("speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel() } catch {}
+    }
 
+    let finished = false
+    const safeFinish = () => {
+      if (finished) return
+      finished = true
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current)
+      if (isComponentMounted.current) {
+        isProcessingRef.current = false
+        onFinish()
+      }
+    }
+
+    // Safety watchdog: guarantees speech turn ends even if mobile audio stalls
+    const estimatedDuration = Math.min(12000, Math.max(2500, cleanText.length * 90))
+    if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current)
+    watchdogTimerRef.current = setTimeout(safeFinish, estimatedDuration)
+
+    // Method A: Native SpeechSynthesis with Chrome/Safari GC Lock
+    if ("speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.resume()
+
+        const utterance = new SpeechSynthesisUtterance(cleanText.substring(0, 260))
+        utterance.lang = "id-ID"
+        utterance.rate = 1.05
+        utterance.volume = 1.0
+
+        const voices = window.speechSynthesis.getVoices()
+        const idVoice =
+          voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
+          voices.find((v) => v.name.toLowerCase().includes("indonesia") || v.name.toLowerCase().includes("andika"))
+
+        if (idVoice) utterance.voice = idVoice
+
+        utterance.onstart = () => {
+          if (isComponentMounted.current) {
+            setCallState("speaking")
+            isProcessingRef.current = true
+          }
+        }
+
+        utterance.onend = safeFinish
+        utterance.onerror = () => {
+          // If speech synthesis fails, fallback to direct audio player
+          playClientAudio(cleanText, safeFinish)
+        }
+
+        // Lock to global window to prevent garbage collection on mobile
+        ;(window as any).__liveUtterance = utterance
+        window.speechSynthesis.speak(utterance)
+        return
+      } catch {
+        playClientAudio(cleanText, safeFinish)
+      }
+    } else {
+      playClientAudio(cleanText, safeFinish)
+    }
+  }, [])
+
+  const playClientAudio = (text: string, onDone: () => void) => {
     try {
-      const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText.substring(0, 240))}`
-      const audio = new Audio(audioUrl)
+      const directUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=id&client=tw-ob&q=${encodeURIComponent(
+        text.substring(0, 200)
+      )}`
+      const audio = new Audio(directUrl)
       currentAudioRef.current = audio
 
       audio.onplay = () => {
         if (isComponentMounted.current) {
           setCallState("speaking")
-          isThinkingOrSpeakingRef.current = true
+          isProcessingRef.current = true
         }
       }
 
       audio.onended = () => {
-        if (isComponentMounted.current) {
-          currentAudioRef.current = null
-          isThinkingOrSpeakingRef.current = false
-          onFinish()
-        }
+        currentAudioRef.current = null
+        onDone()
       }
 
-      audio.onerror = () => {
-        // Fallback: SpeechSynthesis
-        fallbackTTS(cleanText, onFinish)
-      }
+      audio.onerror = onDone
 
-      const promise = audio.play()
-      if (promise !== undefined) {
-        promise.catch(() => {
-          fallbackTTS(cleanText, onFinish)
-        })
+      const p = audio.play()
+      if (p !== undefined) {
+        p.catch(onDone)
       }
     } catch {
-      fallbackTTS(cleanText, onFinish)
-    }
-  }, [])
-
-  const fallbackTTS = (text: string, onFinish: () => void) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      isThinkingOrSpeakingRef.current = false
-      onFinish()
-      return
-    }
-
-    try {
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.resume()
-
-      const utterance = new SpeechSynthesisUtterance(text.substring(0, 200))
-      utterance.lang = "id-ID"
-      utterance.rate = 1.05
-
-      const voices = window.speechSynthesis.getVoices()
-      const idVoice =
-        voices.find((v) => v.lang.includes("id") || v.lang.includes("ID")) ||
-        voices.find((v) => v.name.toLowerCase().includes("indonesia"))
-
-      if (idVoice) utterance.voice = idVoice
-
-      utterance.onstart = () => {
-        if (isComponentMounted.current) {
-          setCallState("speaking")
-          isThinkingOrSpeakingRef.current = true
-        }
-      }
-      utterance.onend = () => {
-        if (isComponentMounted.current) {
-          isThinkingOrSpeakingRef.current = false
-          onFinish()
-        }
-      }
-      utterance.onerror = () => {
-        if (isComponentMounted.current) {
-          isThinkingOrSpeakingRef.current = false
-          onFinish()
-        }
-      }
-
-      window.speechSynthesis.speak(utterance)
-    } catch {
-      isThinkingOrSpeakingRef.current = false
-      onFinish()
+      onDone()
     }
   }
 
-  // ── 2. Speech Recognition (User Speech Turn) ──────────────────────────────
+  // ── 2. Speech Recognition (Listening Turn) ────────────────────────────────
   const stopListening = useCallback(() => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
@@ -148,36 +158,42 @@ export default function LiveVoiceModal({
     }
   }, [])
 
-  const sendCurrentSpeech = useCallback(async (speechText: string) => {
-    if (!speechText.trim() || !isComponentMounted.current) return
+  const sendSpeech = useCallback(
+    async (textToSend: string) => {
+      if (!textToSend.trim() || !isComponentMounted.current) return
 
-    stopListening()
-    setTranscript("")
-    latestTranscriptRef.current = ""
-    setCallState("thinking")
-    isThinkingOrSpeakingRef.current = true
+      stopListening()
+      setTranscript("")
+      latestTranscriptRef.current = ""
+      setCallState("thinking")
+      isProcessingRef.current = true
 
-    try {
-      const response = await onSendMessage(speechText.trim())
-      if (response && isComponentMounted.current) {
-        setAiText(response)
-        playSpeech(response, () => {
-          if (isComponentMounted.current) {
-            startListening()
-          }
-        })
-      } else if (isComponentMounted.current) {
-        startListening()
+      try {
+        const response = await onSendMessage(textToSend.trim())
+        if (response && isComponentMounted.current) {
+          setAiText(response)
+          playSpeech(response, () => {
+            if (isComponentMounted.current) {
+              setCallState("listening")
+              startListeningTurn()
+            }
+          })
+        } else if (isComponentMounted.current) {
+          setCallState("listening")
+          startListeningTurn()
+        }
+      } catch {
+        if (isComponentMounted.current) {
+          setCallState("listening")
+          startListeningTurn()
+        }
       }
-    } catch {
-      if (isComponentMounted.current) {
-        startListening()
-      }
-    }
-  }, [onSendMessage, playSpeech, stopListening])
+    },
+    [onSendMessage, playSpeech, stopListening]
+  )
 
-  const startListening = useCallback(() => {
-    if (!isComponentMounted.current || isThinkingOrSpeakingRef.current) return
+  const startListeningTurn = useCallback(() => {
+    if (!isComponentMounted.current || isProcessingRef.current) return
     stopListening()
 
     const SpeechRecognitionClass =
@@ -190,61 +206,54 @@ export default function LiveVoiceModal({
 
     try {
       const recognition = new SpeechRecognitionClass()
-      // continuous = false is 100x more stable on Android and iOS browsers
       recognition.continuous = false
       recognition.interimResults = true
       recognition.lang = "id-ID"
 
       recognition.onstart = () => {
-        if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
+        if (isComponentMounted.current && !isProcessingRef.current) {
           setCallState("listening")
         }
       }
 
       recognition.onresult = (event: any) => {
-        let text = ""
+        let full = ""
         for (let i = 0; i < event.results.length; i++) {
-          text += event.results[i][0].transcript
+          full += event.results[i][0].transcript
         }
 
-        if (text.trim()) {
-          const clean = text.trim()
-          setTranscript(clean)
-          latestTranscriptRef.current = clean
+        const candidate = full.trim()
+        if (candidate) {
+          setTranscript(candidate)
+          latestTranscriptRef.current = candidate
 
-          // Reset silence timer: automatically send when user pauses for 1.4 seconds
+          // Silence timeout: auto-send after 1.3s of silence
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
           silenceTimerRef.current = setTimeout(() => {
-            if (latestTranscriptRef.current && !isThinkingOrSpeakingRef.current) {
-              sendCurrentSpeech(latestTranscriptRef.current)
+            if (latestTranscriptRef.current && !isProcessingRef.current) {
+              sendSpeech(latestTranscriptRef.current)
             }
-          }, 1400)
+          }, 1300)
         }
       }
 
-      recognition.onerror = (event: any) => {
-        if (event.error === "no-speech") {
-          // If no speech detected, restart listening cleanly if still in listening state
-          if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
-            setTimeout(() => {
-              if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
-                startListening()
-              }
-            }, 300)
-          }
-          return
+      recognition.onerror = () => {
+        if (isComponentMounted.current && !isProcessingRef.current) {
+          setTimeout(() => {
+            if (isComponentMounted.current && !isProcessingRef.current) {
+              startListeningTurn()
+            }
+          }, 400)
         }
       }
 
       recognition.onend = () => {
-        // If recognition naturally ends and we have captured transcript, send it
-        if (latestTranscriptRef.current && !isThinkingOrSpeakingRef.current) {
-          sendCurrentSpeech(latestTranscriptRef.current)
-        } else if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
-          // If ended without speech, keep listening active
+        if (latestTranscriptRef.current && !isProcessingRef.current) {
+          sendSpeech(latestTranscriptRef.current)
+        } else if (isComponentMounted.current && !isProcessingRef.current) {
           setTimeout(() => {
-            if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
-              startListening()
+            if (isComponentMounted.current && !isProcessingRef.current) {
+              startListeningTurn()
             }
           }, 300)
         }
@@ -253,21 +262,20 @@ export default function LiveVoiceModal({
       recognitionRef.current = recognition
       recognition.start()
     } catch {
-      // ignore start errors and retry
       setTimeout(() => {
-        if (isComponentMounted.current && !isThinkingOrSpeakingRef.current) {
-          startListening()
+        if (isComponentMounted.current && !isProcessingRef.current) {
+          startListeningTurn()
         }
       }, 500)
     }
-  }, [sendCurrentSpeech, stopListening])
+  }, [sendSpeech, stopListening])
 
   // ── 3. Lifecycle Initialization ───────────────────────────────────────────
   useEffect(() => {
     isComponentMounted.current = true
-    isThinkingOrSpeakingRef.current = false
+    isProcessingRef.current = false
 
-    // Pre-warm audio engine
+    // Unlock browser speech synthesis
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         const unlock = new SpeechSynthesisUtterance("")
@@ -277,12 +285,13 @@ export default function LiveVoiceModal({
     }
 
     const timer = setTimeout(() => {
-      startListening()
-    }, 400)
+      startListeningTurn()
+    }, 300)
 
     return () => {
       isComponentMounted.current = false
       clearTimeout(timer)
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current)
       stopListening()
 
       if (currentAudioRef.current) {
@@ -297,12 +306,13 @@ export default function LiveVoiceModal({
         try { window.speechSynthesis.cancel() } catch {}
       }
     }
-  }, [startListening, stopListening])
+  }, [startListeningTurn, stopListening])
 
-  // ── 4. Orb Interaction (Tap to Send or Tap to Interrupt) ──────────────────
+  // ── 4. Orb Tap (Interrupt AI or Send Now) ─────────────────────────────────
   const handleOrbTap = () => {
     if (callState === "speaking") {
       // Interrupt AI speech
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current)
       if (currentAudioRef.current) {
         try {
           currentAudioRef.current.pause()
@@ -313,11 +323,11 @@ export default function LiveVoiceModal({
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try { window.speechSynthesis.cancel() } catch {}
       }
-      isThinkingOrSpeakingRef.current = false
-      startListening()
+      isProcessingRef.current = false
+      setCallState("listening")
+      startListeningTurn()
     } else if (callState === "listening" && transcript.trim()) {
-      // Manual trigger send if user taps orb immediately
-      sendCurrentSpeech(transcript.trim())
+      sendSpeech(transcript.trim())
     }
   }
 
