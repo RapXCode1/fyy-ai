@@ -5,13 +5,23 @@ import { formatBrandedError, DEFAULT_MODEL_ID, FALLBACK_MODEL_ID } from "@/lib/m
 
 export const runtime = 'edge'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_build_key",
-})
-
 export async function POST(req: Request) {
   let requestedModel = "llama-3.3-70b-versatile"
   try {
+    const rawApiKey = process.env.GROQ_API_KEY || req.headers.get("x-groq-key") || ""
+    const apiKey = rawApiKey.trim()
+
+    if (!apiKey || apiKey.startsWith("gsk_placeholder") || apiKey.length < 15) {
+      return NextResponse.json(
+        { 
+          error: "🔑 API Key **FYY-GROQ SYSTEM INTELLIGENCE** belum terpasang di Vercel.\n\nSilakan buka Dashboard Vercel > **Settings** > **Environment Variables** > tambahkan **`GROQ_API_KEY`** dengan API key kamu dari Groq Console, lalu lakukan **Redeploy**." 
+        },
+        { status: 500 }
+      )
+    }
+
+    const groq = new Groq({ apiKey })
+
     const { messages, model, mode, isLiveMode, isGuest, isOwner } = await req.json()
     if (model) requestedModel = model
 
