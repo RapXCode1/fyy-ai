@@ -1,11 +1,16 @@
 "use client"
 
-import { Plus, Trash2, Settings, MessageSquare, Sparkles } from "lucide-react"
+import { Plus, Trash2, Edit3, MessageSquare, Sparkles, User } from "lucide-react"
 
 interface Conversation {
   id: string
   title: string
   createdAt: Date
+}
+
+export interface UserProfile {
+  name: string
+  age: string
 }
 
 interface ChatSidebarProps {
@@ -16,6 +21,8 @@ interface ChatSidebarProps {
   onDeleteConversation: (id: string) => void
   isOpen: boolean
   onClose: () => void
+  userProfile: UserProfile
+  onOpenProfile: () => void
 }
 
 export default function ChatSidebar({
@@ -26,7 +33,12 @@ export default function ChatSidebar({
   onDeleteConversation,
   isOpen,
   onClose,
+  userProfile,
+  onOpenProfile,
 }: ChatSidebarProps) {
+  const displayName = userProfile.name?.trim() || "Pengguna FYY-AI"
+  const initialLetter = displayName[0]?.toUpperCase() || "U"
+
   return (
     <>
       {/* Mobile Drawer Overlay */}
@@ -129,21 +141,29 @@ export default function ChatSidebar({
             )}
           </div>
 
-          {/* User Account / Local Profile Footer */}
+          {/* User Account / Local Profile Footer with Edit Profile Button */}
           <div className="p-4 border-t border-[var(--fyf-border)] bg-[var(--fyf-bg)] flex flex-col gap-3">
-            <div className="flex items-center gap-3 p-2 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)]">
-              <div className="w-8 h-8 rounded-full border border-rose-500/30 overflow-hidden bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold text-xs">
-                <Sparkles size={14} />
+            <div 
+              onClick={onOpenProfile}
+              className="flex items-center gap-3 p-2.5 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] hover:border-rose-500/40 hover:bg-white/[0.04] transition-all cursor-pointer group"
+              title="Klik untuk ubah nama/umur profil"
+            >
+              <div className="w-8 h-8 rounded-full border border-rose-500/30 overflow-hidden bg-gradient-to-tr from-rose-600 to-rose-400 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-rose-600/20 flex-shrink-0">
+                {initialLetter}
               </div>
               
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-semibold truncate text-[var(--fyf-text)]">
-                  FYY-AI User
+                <span className="text-xs font-semibold truncate text-[var(--fyf-text)] group-hover:text-rose-400 transition-colors">
+                  {displayName}
                 </span>
-                <span className="text-[9px] text-emerald-400 font-medium truncate flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                  Full Access (Tersimpan di HP)
+                <span className="text-[9px] text-gray-400 font-medium truncate flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  {userProfile.age ? `${userProfile.age} thn · Profil AI Aktif` : "Tersimpan di Perangkat"}
                 </span>
+              </div>
+
+              <div className="p-1.5 rounded-lg bg-white/[0.05] text-gray-400 group-hover:text-white transition-colors">
+                <Edit3 size={12} />
               </div>
             </div>
             

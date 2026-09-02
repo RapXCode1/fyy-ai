@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useSpeechOutput } from "@/hooks/use-voice-input"
 import { useMicrophonePermission } from "@/hooks/use-microphone-permission"
 import { formatBrandedError, OFFICIAL_MODELS, DEFAULT_MODEL_ID } from "@/lib/models"
+import UserProfileModal, { type UserProfile } from "@/components/chat/user-profile-modal"
 
 // Code-split heavy interactive modals & animations to minimize initial JS bundle
 const SettingsPanel = dynamic(() => import("@/components/chat/settings-panel"), { ssr: false })
@@ -51,6 +52,11 @@ export default function ChatPage() {
   const [isClient, setIsClient] = useState(false)
   const [initialLoadDone, setInitialLoadDone] = useState(false)
 
+  // User Profile (Username & Age for natural, friendly AI greetings)
+  const [userProfile, setUserProfile] = useState<UserProfile>({ name: "", age: "" })
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [isInitialProfilePrompt, setIsInitialProfilePrompt] = useState(false)
+
   // Owner mode state
   const [isOwner, setIsOwner] = useState(false)
 
@@ -59,8 +65,36 @@ export default function ChatPage() {
       if (localStorage.getItem("fyy_owner_mode") === "true") {
         setIsOwner(true)
       }
+
+      // Load user profile from localStorage
+      const savedProfile = localStorage.getItem("fyy_user_profile")
+      if (savedProfile) {
+        try {
+          const parsed = JSON.parse(savedProfile)
+          if (parsed?.name) {
+            setUserProfile(parsed)
+            return
+          }
+        } catch {}
+      }
+
+      // If user has not set a profile yet, show friendly onboarding prompt
+      const timer = setTimeout(() => {
+        setIsInitialProfilePrompt(true)
+        setShowProfileModal(true)
+      }, 700)
+      return () => clearTimeout(timer)
     }
   }, [])
+
+  const handleSaveProfile = (profile: UserProfile) => {
+    setUserProfile(profile)
+    try {
+      localStorage.setItem("fyy_user_profile", JSON.stringify(profile))
+    } catch (e) {
+      console.error("Failed to save profile to localStorage:", e)
+    }
+  }
 
   useEffect(() => {
     setIsClient(true)
@@ -487,6 +521,8 @@ export default function ChatPage() {
           isGuest: false,
           isOwner: isOwner,
           customInstruction: customInstruction.trim() || undefined,
+          userName: userProfile.name?.trim() || undefined,
+          userAge: userProfile.age?.trim() || undefined,
         }),
         signal: controller.signal,
       })
@@ -690,6 +726,11 @@ export default function ChatPage() {
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
         onClose={() => setSidebarOpen(false)}
+        userProfile={userProfile}
+        onOpenProfile={() => {
+          setIsInitialProfilePrompt(false)
+          setShowProfileModal(true)
+        }}
       />
 
       {/* Main Chat Area */}
@@ -998,6 +1039,15 @@ export default function ChatPage() {
           onFontChange={setSelectedFont}
         />
       </div>
+
+      {/* User Profile Onboarding / Edit Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        currentProfile={userProfile}
+        onSaveProfile={handleSaveProfile}
+        isInitialPrompt={isInitialProfilePrompt}
+      />
     </div>
   )
 }

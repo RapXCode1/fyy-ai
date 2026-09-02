@@ -111,7 +111,7 @@ export async function POST(req: Request) {
     }
 
     const groq = new Groq({ apiKey })
-    const { messages, model, isLiveMode, isGuest, isOwner, customInstruction } = await req.json()
+    const { messages, model, isLiveMode, isGuest, isOwner, customInstruction, userName, userAge } = await req.json()
     if (model) requestedModel = model
 
     // Check if the latest message has an image attachment
@@ -119,6 +119,11 @@ export async function POST(req: Request) {
     const imageAttachment = latestMessage?.attachments?.find(
       (a: any) => a.type?.startsWith("image/") && a.url && a.url.startsWith("data:")
     )
+
+    // User Profile Context (Name & Age for personalized, warm greetings)
+    const userProfilePart = userName
+      ? `[PROFIL PENGGUNA]: Kamu sedang berbicara dengan "${userName}"${userAge ? ` (Umur: ${userAge} tahun)` : ""}. Sapa pengguna dengan namanya secara natural dan hangat saat memulai obrolan baru atau saat relevan. Tetap ramah, asik, dan responsif.`
+      : ""
 
     // =========================================================================
     // 1. GROQ MULTIMODAL VISION PIPELINE (Qwen 3.6 Multimodal Vision)
@@ -137,7 +142,7 @@ export async function POST(req: Request) {
             messages: [
               {
                 role: "system",
-                content: "Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. Tugasmu adalah menganalisis gambar dan menjawab pertanyaan pengguna secara langsung, ramah, rapi, dan natural dalam bahasa Indonesia. DILARANG MENAMPILKAN PROSES PIKIRAN BATIN ATAU TAG <think>. Langsung berikan penjelasan yang nyaman dan mudah dibaca oleh pengguna.",
+                content: `Kamu adalah FYY-AI, asisten AI cerdas oleh RapXCode. ${userProfilePart} Tugasmu adalah menganalisis gambar dan menjawab pertanyaan pengguna secara langsung, ramah, rapi, dan natural dalam bahasa Indonesia. DILARANG MENAMPILKAN PROSES PIKIRAN BATIN ATAU TAG <think>. Langsung berikan penjelasan yang nyaman dan mudah dibaca oleh pengguna.`,
               },
               {
                 role: "user",
@@ -195,6 +200,7 @@ export async function POST(req: Request) {
       basePrompt,
       getIdentityKnowledge(),
       getBehaviorRules(),
+      userProfilePart,
       livePart,
       guestPart,
       customInstruction ? `[INSTRUKSI KHUSUS DARI USER: ${customInstruction}]` : "",
