@@ -1,7 +1,6 @@
 "use client"
 
-import { Plus, Trash2, Settings, MessageSquare, LogOut, Sparkles } from "lucide-react"
-import { useUser, UserButton } from "@clerk/nextjs"
+import { Plus, Trash2, Settings, MessageSquare, Sparkles } from "lucide-react"
 
 interface Conversation {
   id: string
@@ -28,9 +27,6 @@ export default function ChatSidebar({
   isOpen,
   onClose,
 }: ChatSidebarProps) {
-  const { user, isSignedIn, isLoaded } = useUser()
-  const isGuest = isLoaded && !isSignedIn
-
   return (
     <>
       {/* Mobile Drawer Overlay */}
@@ -74,7 +70,7 @@ export default function ChatSidebar({
             </button>
           </div>
 
-          {/* Chat History Section */}
+          {/* Chat History Section (Persisted Locally in User's Device) */}
           <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
             <div className="px-2 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center justify-between">
               <span>Recents</span>
@@ -86,7 +82,7 @@ export default function ChatSidebar({
             {conversations.length === 0 ? (
               <div className="py-12 text-center">
                 <MessageSquare size={24} className="mx-auto text-gray-600 mb-2 opacity-50" />
-                <p className="text-[11px] text-gray-500 font-medium">Start a new conversation</p>
+                <p className="text-[11px] text-gray-500 font-medium">Mulai percakapan baru</p>
               </div>
             ) : (
               conversations.map((conv) => {
@@ -133,64 +129,23 @@ export default function ChatSidebar({
             )}
           </div>
 
-
-          {/* User Account / Footer */}
+          {/* User Account / Local Profile Footer */}
           <div className="p-4 border-t border-[var(--fyf-border)] bg-[var(--fyf-bg)] flex flex-col gap-3">
-            {isGuest ? (
-              <div className="flex items-center gap-3 p-2 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] hover:bg-[var(--fyf-border)] transition-colors">
-                <div className="w-8 h-8 rounded-full border border-yellow-500/30 overflow-hidden bg-yellow-500/10 flex items-center justify-center text-yellow-500 font-bold text-xs">
-                  G
-                </div>
-                
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-semibold truncate text-white">
-                    Guest Session
-                  </span>
-                  <span className="text-[9px] font-medium text-yellow-500/80 truncate">
-                    Limited Access (20 Chats)
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => {
-                    document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                    import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
-                  }}
-                  className="w-7 h-7 flex items-center justify-center bg-yellow-500/10 hover:bg-yellow-500/20 rounded-lg transition-colors text-yellow-500 cursor-pointer"
-                  title="Log in to Save Chats"
-                >
-                  <LogOut size={12} />
-                </button>
+            <div className="flex items-center gap-3 p-2 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)]">
+              <div className="w-8 h-8 rounded-full border border-rose-500/30 overflow-hidden bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold text-xs">
+                <Sparkles size={14} />
               </div>
-            ) : (
-              <div className="flex items-center gap-3 p-2 rounded-xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] hover:bg-[var(--fyf-border)] transition-colors">
-                <div className="w-8 h-8 rounded-full border border-[var(--fyf-border)] overflow-hidden bg-[var(--fyf-card)] flex-shrink-0">
-                  {user?.imageUrl ? (
-                    <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-red-500/20 text-red-400 font-bold text-xs">
-                      {user?.firstName?.[0] || 'U'}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-semibold truncate text-[var(--fyf-text)]">
-                    {user?.fullName || 'User'}
-                  </span>
-                  <span className="text-[9px] text-[var(--fyf-text-secondary)] truncate">
-                    {user?.primaryEmailAddress?.emailAddress || 'Free Tier'}
-                  </span>
-                </div>
-
-                <div className="relative w-7 h-7 flex items-center justify-center bg-[var(--fyf-border)] rounded-lg hover:bg-[var(--fyf-border-hover)] transition-colors cursor-pointer border border-[var(--fyf-border)]">
-                  <Settings size={12} className="text-gray-400" />
-                  <div className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer">
-                    <UserButton appearance={{ elements: { avatarBox: "w-7 h-7 rounded-none" } }} />
-                  </div>
-                </div>
+              
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-xs font-semibold truncate text-[var(--fyf-text)]">
+                  FYY-AI User
+                </span>
+                <span className="text-[9px] text-emerald-400 font-medium truncate flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                  Full Access (Tersimpan di HP)
+                </span>
               </div>
-            )}
+            </div>
             
             <div className="px-1 text-center sm:text-left">
               <p className="text-[8px] uppercase tracking-widest text-gray-500 font-black">FYY-GROQ SYSTEM INTELLIGENCE</p>

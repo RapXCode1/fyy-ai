@@ -1,14 +1,11 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import ThemeStyleProvider from "@/components/theme-style-provider"
 import ClientOnlyProviders from "@/components/client-only-providers"
 import "./globals.css"
-
-import { ClerkProvider } from "@clerk/nextjs"
-import type { Viewport } from "next"
 
 export const viewport: Viewport = {
   themeColor: "#000000",
@@ -56,18 +53,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider afterSignOutUrl="/">
-      <html lang="en" suppressHydrationWarning>
-        <body className="font-sans antialiased">
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-            <ThemeStyleProvider />
-            <ClientOnlyProviders />
-            {children}
-            <Analytics />
-            <SpeedInsights />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className="font-sans antialiased">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <ThemeStyleProvider />
+          <ClientOnlyProviders />
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </ThemeProvider>
+      </body>
+    </html>
   )
 }

@@ -18,7 +18,7 @@ interface UploadedFile {
 export default function FileUpload({ onFileUpload }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [uploadError, setUploadError] = useState<string>("")
-  
+
   const { fileInputRef, isLoading, handleFileChange, triggerFileInput } = useFileUpload({
     maxSize: 50 * 1024 * 1024,
     acceptedTypes: ["image/*", "application/pdf", "text/*", "application/json"],
@@ -58,9 +58,9 @@ export default function FileUpload({ onFileUpload }: FileUploadProps) {
       <div className="flex items-center justify-between">
         <div>
           <label className="text-xs font-bold text-[var(--fyf-text)] uppercase tracking-wider">Attachment Hub</label>
-          <p className="text-[10px] text-gray-500 mt-0.5">Images, PDFs, JSON or TXT documents (Max 50MB)</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">Images, PDFs, Documents or Any Files (Max 50MB)</p>
         </div>
-        
+
         <Button
           onClick={triggerFileInput}
           disabled={isLoading}

@@ -74,10 +74,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   // ── Stop any playing audio (without touching isAiBusy) ───────────────────
   const stopPlayingAudio = useCallback(() => {
     if (currentAudioSource.current) {
-      try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch {}
+      try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch { }
       currentAudioSource.current = null
     }
-    try { window.speechSynthesis?.cancel() } catch {}
+    try { window.speechSynthesis?.cancel() } catch { }
   }, [])
 
   // ── Hard lock mic: recognition is stopped + mic track disabled ───────────
@@ -87,7 +87,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (mediaStream.current) {
       mediaStream.current.getAudioTracks().forEach((t) => { t.enabled = false })
     }
-    try { recognition.current?.stop() } catch {}
+    try { recognition.current?.stop() } catch { }
   }, [])
 
   // ── Unlock mic (called after AI finishes speaking + cooldown) ────────────
@@ -487,7 +487,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         let fo = 0
         if (fd) { const si = Math.floor((i / N) * fd.length * 0.55); fo = (fd[si] / 255) * baseR * 0.17 }
         const hm = Math.sin(angle * 3 + morphPhase.current * 2.0) * baseR * 0.045
-                 + Math.cos(angle * 5 - morphPhase.current * 1.6) * baseR * 0.025
+          + Math.cos(angle * 5 - morphPhase.current * 1.6) * baseR * 0.025
         pts.push({
           x: cx + Math.cos(angle) * (baseR * sc + hm + fo),
           y: cy + Math.sin(angle) * (baseR * sc + hm + fo),
@@ -537,7 +537,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       const buf = ctx.createBuffer(1, 1, 22050)
       const src = ctx.createBufferSource(); src.buffer = buf
       src.connect(ctx.destination); src.start(0); ctx.resume()
-    } catch {}
+    } catch { }
 
     // Pre-cache SpeechSynthesis voices
     if ("speechSynthesis" in window) {
@@ -548,7 +548,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         window.speechSynthesis.onvoiceschanged = () => {
           cachedVoices.current = window.speechSynthesis.getVoices()
         }
-      } catch {}
+      } catch { }
     }
 
     // Sequential init
@@ -571,7 +571,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       stopPlayingAudio()
       if (orbAnimId.current) cancelAnimationFrame(orbAnimId.current)
 
-      try { recognition.current?.stop() } catch {}
+      try { recognition.current?.stop() } catch { }
       recognition.current = null
 
       if (mediaStream.current) {
@@ -579,10 +579,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
         mediaStream.current = null
       }
 
-      if (ctx.state !== "closed") { try { ctx.close() } catch {} }
+      if (ctx.state !== "closed") { try { ctx.close() } catch { } }
       audioCtx.current = null
 
-      try { window.speechSynthesis?.cancel() } catch {}
+      try { window.speechSynthesis?.cancel() } catch { }
     }
   }, [initializeAudioStream, buildRecognition, startRecognition, clearAllTimers, stopPlayingAudio])
 
@@ -594,7 +594,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     if (newMuted) {
       if (mediaStream.current) mediaStream.current.getAudioTracks().forEach((t) => { t.enabled = false })
-      isRecognitionActive.current = false; try { recognition.current?.stop() } catch {}
+      isRecognitionActive.current = false; try { recognition.current?.stop() } catch { }
     } else {
       if (!micLocked.current && mediaStream.current) {
         mediaStream.current.getAudioTracks().forEach((t) => { t.enabled = true })
@@ -617,10 +617,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const statusLabel = isMuted
     ? "Mikrofon dibisukan (Muted)"
     : phase === "connecting" ? "Menghubungkan mikrofon..."
-    : phase === "thinking" ? "FYY-AI sedang berpikir..."
-    : phase === "speaking" ? "FYY-AI sedang berbicara..."
-    : isUserSpeakingRef.current ? "Mendengarkan ucapanmu..."
-    : "Mendengarkan · Bicara bebas (ID/EN)..."
+      : phase === "thinking" ? "FYY-AI sedang berpikir..."
+        : phase === "speaking" ? "FYY-AI sedang berbicara..."
+          : isUserSpeakingRef.current ? "Mendengarkan ucapanmu..."
+            : "Mendengarkan · Bicara bebas (ID/EN)..."
 
   return (
     <div
@@ -630,12 +630,11 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       {/* ── HEADER ── */}
       <header className="w-full max-w-xl flex items-center justify-between px-6 pt-6 sm:pt-8 z-20">
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/[0.08] backdrop-blur-xl shadow-lg">
-          <span className={`w-2 h-2 rounded-full ${
-            phase === "speaking" ? "bg-rose-500 animate-ping"
+          <span className={`w-2 h-2 rounded-full ${phase === "speaking" ? "bg-rose-500 animate-ping"
             : phase === "thinking" ? "bg-amber-400 animate-pulse"
-            : phase === "error" ? "bg-red-500"
-            : "bg-emerald-400"
-          }`} />
+              : phase === "error" ? "bg-red-500"
+                : "bg-emerald-400"
+            }`} />
           <span className="text-[11px] font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
             <Sparkles size={11} className="text-rose-400" />
             FYY-AI Live
@@ -663,14 +662,13 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
           className="w-64 h-64 sm:w-80 sm:h-80 cursor-pointer active:scale-95 transition-transform duration-150 rounded-full"
           title={phase === "speaking" ? "Ketuk untuk menyela" : "FYY-AI Live"}
         />
-        <p className={`mt-4 text-xs font-semibold tracking-wide transition-all duration-500 ${
-          phase === "error" ? "text-yellow-400"
+        <p className={`mt-4 text-xs font-semibold tracking-wide transition-all duration-500 ${phase === "error" ? "text-yellow-400"
           : isMuted ? "text-gray-500"
-          : phase === "thinking" ? "text-amber-400 animate-pulse"
-          : phase === "speaking" ? "text-rose-400"
-          : isUserSpeakingRef.current ? "text-rose-300 animate-pulse"
-          : "text-gray-400"
-        }`}>
+            : phase === "thinking" ? "text-amber-400 animate-pulse"
+              : phase === "speaking" ? "text-rose-400"
+                : isUserSpeakingRef.current ? "text-rose-300 animate-pulse"
+                  : "text-gray-400"
+          }`}>
           {statusLabel}
         </p>
       </main>
@@ -709,7 +707,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
                 <Volume2 size={11} className="animate-pulse" /> FYY-AI
               </p>
               <p className="text-white text-sm font-semibold leading-relaxed line-clamp-3">{activeTranscript.text}</p>
-              <p className="text-[9px] text-gray-600 uppercase tracking-widest mt-1">Ketuk bola untuk menyela</p>
+              <p className="text-[9px] text-gray-600 uppercase tracking-widest mt-1">Klik untuk menghentikan perekaman dan langsung kirim</p>
             </div>
           ) : (
             <div className="px-5 py-2 rounded-full bg-white/[0.03] border border-white/[0.06]">
@@ -722,11 +720,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       {/* ── CONTROLS ── */}
       <footer className="w-full max-w-sm flex items-center justify-center gap-8 pb-10 sm:pb-12 z-20">
         <button type="button" onClick={toggleMute}
-          className={`p-4 rounded-full border transition-all duration-200 active:scale-90 shadow-lg ${
-            isMuted
-              ? "bg-red-500/20 border-red-500/40 text-red-400 shadow-red-500/10"
-              : "bg-white/[0.06] border-white/10 text-white hover:bg-white/10"
-          }`}>
+          className={`p-4 rounded-full border transition-all duration-200 active:scale-90 shadow-lg ${isMuted
+            ? "bg-red-500/20 border-red-500/40 text-red-400 shadow-red-500/10"
+            : "bg-white/[0.06] border-white/10 text-white hover:bg-white/10"
+            }`}>
           {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
 

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 interface SettingsPanelProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (settings: { fontFamily?: string; [key: string]: unknown }) => void
+  onSave: (settings: { fontFamily?: string;[key: string]: unknown }) => void
   onFontChange?: (_font: string) => void
 }
 
@@ -96,7 +96,7 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
       {/* Modal Container */}
       <div className="fixed inset-0 flex items-center justify-center z-[120] p-4 sm:p-6 animate-scale-in">
         <div className="w-full max-w-xl max-h-[90vh] flex flex-col fyf-card rounded-3xl overflow-hidden shadow-2xl">
-          
+
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--fyf-border)] p-4 sm:p-5 flex-shrink-0">
             <h2 className="text-sm font-bold text-[var(--fyf-text)] flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
 
           {/* Settings scrollable area */}
           <div className="p-4 sm:p-5 space-y-5 overflow-y-auto scrollbar-thin flex-1">
-            
+
             {/* Section 1: User Custom Instruction */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[var(--fyf-text-secondary)] uppercase tracking-wider flex items-center gap-1.5">
@@ -176,7 +176,7 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
                 <Type size={12} className="text-rose-400" />
                 Font Tampilan
               </label>
-              
+
               <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto scrollbar-thin">
                 {[
                   { id: 'Inter', name: 'Inter', desc: 'Modern & Bersih' },
@@ -230,7 +230,7 @@ export default function SettingsPanel({ isOpen, onClose, onSave, onFontChange }:
             <div className="flex items-start gap-2.5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl">
               <Info size={14} className="text-rose-400 mt-0.5 flex-shrink-0" />
               <p className="text-[10px] text-rose-300/90 leading-relaxed">
-                Pengaturan ini disimpan secara aman di preferensi lokal browser Anda dan otomatis diterapkan pada setiap percakapan.
+                Pengaturan ini disimpan secara aman di preferensi lokal browser dan aplikasi Anda dan otomatis diterapkan pada setiap percakapan.
               </p>
             </div>
 

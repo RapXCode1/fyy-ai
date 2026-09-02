@@ -13,8 +13,6 @@ import ModesSelector from "@/components/chat/modes-selector"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useSpeechOutput } from "@/hooks/use-voice-input"
 import { useMicrophonePermission } from "@/hooks/use-microphone-permission"
-import { useUser, useSession, useAuth } from "@clerk/nextjs"
-import { createClerkSupabaseClient, getClerkSupabaseToken, isSupabaseConfigured, tripSupabaseCircuitBreaker } from "@/lib/supabase"
 import { formatBrandedError, OFFICIAL_MODELS, DEFAULT_MODEL_ID } from "@/lib/models"
 
 // Code-split heavy interactive modals & animations to minimize initial JS bundle
@@ -46,20 +44,12 @@ interface Conversation {
 }
 
 export default function ChatPage() {
-  const { user, isLoaded, isSignedIn } = useUser()
-  const { session } = useSession()
-  const { getToken } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isClient, setIsClient] = useState(false)
   const [initialLoadDone, setInitialLoadDone] = useState(false)
-
-  // Guest Mode limits
-  const [guestChatsCount, setGuestChatsCount] = useState(0)
-  const [guestImagesCount, setGuestImagesCount] = useState(0)
-  const [showGuestLimitPopup, setShowGuestLimitPopup] = useState<{ type: 'chat' | 'image' | 'model' | 'mode', lockedItem: string } | null>(null)
 
   // Owner mode state
   const [isOwner, setIsOwner] = useState(false)
@@ -71,15 +61,6 @@ export default function ChatPage() {
       }
     }
   }, [])
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      const chats = localStorage.getItem("fyy_guest_chats_count")
-      const images = localStorage.getItem("fyy_guest_images_count")
-      if (chats) setGuestChatsCount(parseInt(chats))
-      if (images) setGuestImagesCount(parseInt(images))
-    }
-  }, [isLoaded, isSignedIn])
 
   useEffect(() => {
     setIsClient(true)
@@ -99,60 +80,8 @@ export default function ChatPage() {
   const [showQuickPrompts, setShowQuickPrompts] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [selectedFont, setSelectedFont] = useState("Inter")
-  const [showSyncBanner, setShowSyncBanner] = useState(false)
 
   const { permissionStatus: microphonePermissionStatus, isDenied: microphonePermissionDenied, requestPermission: requestMicrophonePermission } = useMicrophonePermission()
-
-  // Capacitor Deep Linking - Sync clerk session when opened via fyyai://sync?client_token=xxx&session_token=yyy
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handleAppUrlOpen = async (event: any) => {
-        try {
-          const urlStr = event.url;
-          if (urlStr.startsWith("fyyai://sync")) {
-            const url = new URL(urlStr.replace("fyyai://", "https://"));
-            const clientToken = url.searchParams.get("client_token");
-            const sessionToken = url.searchParams.get("session_token");
-
-            if (sessionToken) {
-              // Set Clerk cookies on Webview directly
-              document.cookie = `__session=${decodeURIComponent(sessionToken)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
-
-              if (clientToken) {
-                document.cookie = `__client=${decodeURIComponent(clientToken)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
-              }
-
-              // Clear guest cookie
-              document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-
-              // Force reload to log in
-              window.location.reload();
-            }
-          }
-        } catch (e) {
-          console.error("Deep link sync error:", e);
-        }
-      };
-
-      // Listen to Capacitor App events safely
-      import("@capacitor/app").then(({ App }) => {
-        App.addListener("appUrlOpen", handleAppUrlOpen);
-      }).catch((err) => {
-        console.log("Capacitor App listener not active (standard web mode)", err);
-      });
-    }
-  }, []);
-  // Sync Banner detector for standard mobile browsers
-  useEffect(() => {
-    if (typeof window !== "undefined" && isClient) {
-      const win = window as any
-      const isAPK = !!(win.Capacitor?.isNativePlatform?.())
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent)
-      if (!isAPK && isMobile && isSignedIn) {
-        setShowSyncBanner(true)
-      }
-    }
-  }, [isClient, isSignedIn])
 
   // Live Voice Mode State
   const [isLiveMode, setIsLiveMode] = useState(false)
@@ -311,118 +240,6 @@ export default function ChatPage() {
     }
   }, [conversations, isClient])
 
-  // Load conversations from Supabase on page load and merge/de-duplicate with local
-  useEffect(() => {
-    if (user && session && !initialLoadDone) {
-      const fetchConversations = async () => {
-        if (!isSupabaseConfigured()) {
-          setInitialLoadDone(true)
-          return
-        }
-        try {
-          const token = await getClerkSupabaseToken(session)
-          const supabase = createClerkSupabaseClient(token)
-
-          if (!supabase) {
-            setInitialLoadDone(true)
-            return
-          }
-
-          const { data, error } = await supabase
-            .from('conversations')
-            .select('*')
-            .order('created_at', { ascending: false })
-
-          if (error) {
-            tripSupabaseCircuitBreaker(error.message)
-            setInitialLoadDone(true)
-            return
-          }
-
-          if (data && data.length > 0) {
-            const parsedConversations = data.map((conv: any) => ({
-              id: conv.id,
-              title: conv.title,
-              model: conv.model,
-              mode: conv.mode,
-              createdAt: new Date(conv.created_at),
-              messages: conv.messages.map((msg: any) => ({
-                ...msg,
-                timestamp: new Date(msg.timestamp)
-              }))
-            }))
-
-            setConversations(prev => {
-              const combined = [...parsedConversations, ...prev]
-              const uniqueMap = new Map()
-              combined.forEach(conv => {
-                uniqueMap.set(conv.id, conv)
-              })
-              const unique = Array.from(uniqueMap.values())
-              const sorted = unique.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-              try {
-                localStorage.setItem("fyy_conversations", JSON.stringify(sorted))
-              } catch (e) {
-                console.error("Failed to sync storage in merge:", e)
-              }
-              return sorted
-            })
-
-            if (!currentConversationId && parsedConversations.length > 0) {
-              const mostRecent = parsedConversations[0]
-              setCurrentConversationId(mostRecent.id)
-              setMessages(mostRecent.messages)
-              const validModel = models.find(m => m.id === mostRecent.model)?.id || models[0].id
-              setSelectedModel(validModel)
-              setSelectedMode(mostRecent.mode || "general")
-            }
-          }
-          setInitialLoadDone(true)
-        } catch (e: any) {
-          tripSupabaseCircuitBreaker(e?.message)
-          setInitialLoadDone(true)
-        }
-      }
-      fetchConversations()
-    }
-  }, [user, session, initialLoadDone, currentConversationId])
-
-  // Sync current conversation to Supabase (Debounced)
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  useEffect(() => {
-    if (isClient && initialLoadDone && user && session && currentConversationId && isSupabaseConfigured()) {
-      const currentConv = conversations.find(c => c.id === currentConversationId)
-      if (currentConv) {
-        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
-        syncTimeoutRef.current = setTimeout(async () => {
-          try {
-            const token = await getClerkSupabaseToken(session)
-            const supabase = createClerkSupabaseClient(token)
-            if (!supabase) return
-
-            const { error } = await supabase.from('conversations').upsert({
-              id: currentConv.id,
-              user_id: user.id,
-              title: currentConv.title,
-              messages: currentConv.messages,
-              model: currentConv.model,
-              mode: currentConv.mode,
-              created_at: currentConv.createdAt.toISOString()
-            })
-            if (error) {
-              tripSupabaseCircuitBreaker(error.message)
-            }
-          } catch (e: any) {
-            tripSupabaseCircuitBreaker(e?.message)
-          }
-        }, 1500)
-      }
-    }
-    return () => {
-      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
-    }
-  }, [conversations, currentConversationId, isClient, initialLoadDone, user, session])
-
   const handleNewChat = () => {
     const newConversation: Conversation = {
       id: Date.now().toString(),
@@ -479,18 +296,6 @@ export default function ChatPage() {
       } else {
         setCurrentConversationId(null)
         setMessages([])
-      }
-    }
-
-    if (user && session && isSupabaseConfigured()) {
-      try {
-        const token = await getClerkSupabaseToken(session)
-        const supabase = createClerkSupabaseClient(token)
-        if (supabase) {
-          await supabase.from('conversations').delete().eq('id', id)
-        }
-      } catch (e) {
-        console.warn("Failed to delete conversation from Supabase:", e)
       }
     }
   }
@@ -558,17 +363,6 @@ export default function ChatPage() {
     if (content.includes("FYY3257")) {
       localStorage.setItem("fyy_owner_mode", "true")
       setIsOwner(true)
-    }
-
-    if (isLoaded && !isSignedIn) {
-      const chats = localStorage.getItem("fyy_guest_chats_count")
-      const chatsCount = chats ? parseInt(chats) : 0
-      if (chatsCount >= 20) {
-        setShowGuestLimitPopup({ type: "chat", lockedItem: "" })
-        return ""
-      }
-      localStorage.setItem("fyy_guest_chats_count", (chatsCount + 1).toString())
-      setGuestChatsCount(chatsCount + 1)
     }
 
     setShowModelSelector(false)
@@ -690,7 +484,7 @@ export default function ChatPage() {
           model: selectedModel,
           mode: selectedMode,
           isLiveMode: isLiveModeRef.current,
-          isGuest: !isSignedIn,
+          isGuest: false,
           isOwner: isOwner,
           customInstruction: customInstruction.trim() || undefined,
         }),
@@ -790,10 +584,6 @@ export default function ChatPage() {
   }
 
   const handleModeChange = (modeId: string) => {
-    if (isLoaded && !isSignedIn && (modeId === "creative" || modeId === "research")) {
-      setShowGuestLimitPopup({ type: "mode", lockedItem: modeId })
-      return
-    }
     setSelectedMode(modeId)
   }
 
@@ -1025,64 +815,6 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {showSyncBanner && (
-          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl border border-red-500/20 bg-[var(--fyf-surface)]/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left relative overflow-hidden animate-fade-up z-30">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-rose-500/5 to-white/5" />
-            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-2.5">
-              <span className="text-lg">📲</span>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-[var(--fyf-text)]">
-                  Active Web Login Detected!
-                </span>
-                <span className="text-[10px] text-[var(--fyf-text-secondary)] mt-0.5">
-                  Synchronize this session directly with the FYY-AI Android App to skip logging in again.
-                </span>
-              </div>
-            </div>
-            
-            <div className="relative z-10 flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={async () => {
-                  try {
-                    let sessionToken = null;
-                    if (session) {
-                      sessionToken = await session.getToken();
-                    } else {
-                      sessionToken = await getToken();
-                    }
-
-                    if (!sessionToken) {
-                      const getCookie = (name: string) => {
-                        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-                        return match ? match[2] : null;
-                      };
-                      sessionToken = getCookie('__session');
-                    }
-
-                    if (sessionToken) {
-                      window.location.href = `fyyai://sync?session_token=${encodeURIComponent(sessionToken)}`;
-                    } else {
-                      alert("Unable to sync. Please re-sign in on the web.");
-                    }
-                  } catch (err) {
-                    console.error("Session sync failed:", err);
-                    alert("Error retrieving session credentials.");
-                  }
-                }}
-                className="py-1.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all duration-300 shadow-md shadow-red-500/15"
-              >
-                Sync to Mobile App
-              </button>
-              <button
-                onClick={() => setShowSyncBanner(false)}
-                className="p-1 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Backdrop modals */}
         {(showModesSelector || showModelSelector || showImageGenerator || showQuickPrompts) && (
           <div
@@ -1144,12 +876,8 @@ export default function ChatPage() {
                 models={models}
                 selectedModel={selectedModel}
                 onSelectModel={(model) => {
-                  if (isLoaded && !isSignedIn && (model === "meta-llama/llama-4-scout-17b-16e-instruct" || model === "openai/gpt-oss-120b")) {
-                    setShowGuestLimitPopup({ type: "model", lockedItem: model })
-                    return
-                  }
-                  setSelectedModel(model);
-                  setShowModelSelector(false);
+                  setSelectedModel(model)
+                  setShowModelSelector(false)
                 }}
               />
             </div>
@@ -1172,7 +900,6 @@ export default function ChatPage() {
               </div>
               <ImageGenerator
                 onClose={() => setShowImageGenerator(false)}
-                onGuestLimit={() => setShowGuestLimitPopup({ type: "image", lockedItem: "" })}
               />
             </div>
           </div>
@@ -1271,52 +998,7 @@ export default function ChatPage() {
           onFontChange={setSelectedFont}
         />
       </div>
-
-      {/* Guest Mode Protection Banner Modal */}
-      {showGuestLimitPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-[250] p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-sm p-6 rounded-3xl border border-[var(--fyf-border)] bg-[var(--fyf-surface)] shadow-2xl text-center animate-scale-in">
-            <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4 text-yellow-500">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </div>
-
-            <h3 className="text-base font-bold text-[var(--fyf-text)]">
-              {showGuestLimitPopup.type === "chat" && "Guest Limit Reached"}
-              {showGuestLimitPopup.type === "image" && "Image Studio Limit"}
-              {showGuestLimitPopup.type === "model" && "Premium Model Locked"}
-              {showGuestLimitPopup.type === "mode" && "Specialized Mode Locked"}
-            </h3>
-
-            <p className="mt-2 text-xs sm:text-sm text-[var(--fyf-text-secondary)] leading-relaxed font-medium">
-              {showGuestLimitPopup.type === "chat" && "You've exhausted your guest session chat quota. Sign up for a free, unlimited account in seconds to save conversations."}
-              {showGuestLimitPopup.type === "image" && "Image Generation is limited in Guest Mode. Connect your free personal account to start generating endless visuals."}
-              {showGuestLimitPopup.type === "model" && "This advanced model is optimized for authenticated members. Create a free account in 10 seconds to unlock."}
-              {showGuestLimitPopup.type === "mode" && "Specialized reasoning modes require authentication. Create a free account in 10 seconds to unlock."}
-            </p>
-
-            <div className="mt-5 flex flex-col gap-2">
-              <button
-                onClick={() => {
-                  document.cookie = "fyy_guest=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict";
-                  import('@/lib/openSignIn').then(mod => mod.default()).catch(() => { window.location.href = "/sign-in" })
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs tracking-wide transition-all duration-300 shadow-lg shadow-red-500/20"
-              >
-                Create Free Account
-              </button>
-              <button
-                onClick={() => setShowGuestLimitPopup(null)}
-                className="w-full py-2 px-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-bold text-xs transition-all duration-200"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
+

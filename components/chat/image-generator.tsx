@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-import { useUser } from "@clerk/nextjs"
-
 interface ImageModel {
   id: string
   modelId: string
@@ -56,7 +54,6 @@ const imageModels: ImageModel[] = [
 ]
 
 export default function ImageGenerator({ onClose, onGuestLimit }: ImageGeneratorProps) {
-  const { isSignedIn } = useUser()
   const [prompt, setPrompt] = useState("")
   const [selectedModel, setSelectedModel] = useState("flux")
   const [width, setWidth] = useState(512)
@@ -74,18 +71,6 @@ export default function ImageGenerator({ onClose, onGuestLimit }: ImageGenerator
     if (prompt.length < 3) {
       setError("Prompt must be at least 3 characters long")
       return
-    }
-
-    if (!isSignedIn) {
-      const images = localStorage.getItem("fyy_guest_images_count")
-      const imagesCount = images ? parseInt(images) : 0
-      if (imagesCount >= 5) {
-        setError("Batas Guest Mode Tercapai! Yuk buat akun gratis sekarang untuk menghasilkan gambar tanpa batas!")
-        if (onGuestLimit) {
-          onGuestLimit("image")
-        }
-        return
-      }
     }
 
     setIsGenerating(true)
@@ -136,12 +121,6 @@ export default function ImageGenerator({ onClose, onGuestLimit }: ImageGenerator
 
       const imageUrl = URL.createObjectURL(blob)
       setGeneratedImage(imageUrl)
-
-      if (!isSignedIn) {
-        const images = localStorage.getItem("fyy_guest_images_count")
-        const imagesCount = images ? parseInt(images) : 0
-        localStorage.setItem("fyy_guest_images_count", (imagesCount + 1).toString())
-      }
 
       // Show success message if fallback was used
       if (usedFallback) {
