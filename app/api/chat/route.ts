@@ -12,7 +12,7 @@ import {
 import { formatBrandedError, DEFAULT_MODEL_ID } from "@/lib/models"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 90
 
 // Official active multimodal vision models on Groq
 const GROQ_VISION_MODELS = [
@@ -208,8 +208,9 @@ export async function POST(req: Request) {
       (m, i, arr) => m && arr.indexOf(m) === i
     )
 
-    // Keep the last 20 turns for memory retention
-    const recent = messages.slice(-20)
+    // Keep the last 20 turns for memory (6 for live voice mode to avoid token overflow)
+    const contextLimit = isLiveMode ? 6 : 20
+    const recent = messages.slice(-contextLimit)
 
     const textMessages = [
       systemMessage,
@@ -233,7 +234,7 @@ export async function POST(req: Request) {
           messages: textMessages,
           stream: true,
           temperature: globalSettings.temperature,
-          max_tokens: 4096,
+          max_tokens: isLiveMode ? 1024 : 8192,
           top_p: globalSettings.topP,
         })
         usedModel = tryModel
