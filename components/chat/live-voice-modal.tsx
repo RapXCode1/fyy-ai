@@ -40,6 +40,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
   const isRecognitionActive = useRef(false)
   const watchdogTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restartTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const thinkingStartTime = useRef<number>(0) // for minimum thinking visual hold
   const animFrameId = useRef<number | null>(null)
 
   const mediaStream = useRef<MediaStream | null>(null)
@@ -62,7 +63,18 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (restartTimer.current) { clearTimeout(restartTimer.current); restartTimer.current = null }
   }
 
-  // ── 1. Interrupt AI Speech ────────────────────────────────────────────────
+  // Stops current audio sources WITHOUT resetting isAiBusy (used internally in playAISpeech)
+  const stopCurrentAudio = useCallback(() => {
+    if (currentAudioSource.current) {
+      try { currentAudioSource.current.stop(); currentAudioSource.current.disconnect() } catch {}
+      currentAudioSource.current = null
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel() } catch {}
+    }
+  }, [])
+
+  // ── 1. Interrupt AI Speech (barge-in by user — resets isAiBusy) ──────────
   const interruptAI = useCallback(() => {
     clearTimers()
     if (currentAudioSource.current) {
@@ -103,8 +115,10 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
 
     if (!cleanText) { isAiBusy.current = false; onDone(); return }
 
-    // Stop recognition BEFORE speaking to prevent echo self-trigger
-    interruptAI()
+    // Stop current audio WITHOUT resetting isAiBusy (we're still busy speaking)
+    stopCurrentAudio()
+    // Keep isAiBusy = true — do NOT call interruptAI() here (it resets isAiBusy!)
+    isAiBusy.current = true
     isRecognitionActive.current = false
     try { recognition.current?.stop() } catch {}
 
@@ -153,7 +167,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
       }
     }
     runPlayback()
-  }, [interruptAI])
+  }, [interruptAI, stopCurrentAudio])
 
   const fallbackSpeechSynthesis = (text: string, onDone: () => void) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) { onDone(); return }
@@ -176,6 +190,7 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     if (!clean || isAiBusy.current || !isMounted.current) return
 
     isAiBusy.current = true
+    thinkingStartTime.current = Date.now()
     setPhase("thinking")
     setInterimText("")
     setActiveTranscript({ speaker: "user", text: clean })
@@ -183,6 +198,12 @@ export default function LiveVoiceModal({ onEndCall, onSendMessage }: LiveVoiceMo
     try {
       const aiReply = await onSendMessage(clean)
       if (!isMounted.current) return
+
+      // Ensure thinking phase is visible for at least 600ms before switching to speaking
+      const elapsed = Date.now() - thinkingStartTime.current
+      if (elapsed < 600) await new Promise((r) => setTimeout(r, 600 - elapsed))
+      if (!isMounted.current) return
+
       if (aiReply) {
         playAISpeech(aiReply, () => {
           if (isMounted.current) { setPhase("listening"); startRecognition() }
