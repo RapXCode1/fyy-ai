@@ -235,12 +235,13 @@ export async function POST(req: Request) {
 
     for (const tryModel of candidates) {
       try {
+        const tokenLimit = isLiveMode ? 768 : 2048
         response = await groq.chat.completions.create({
           model: tryModel,
           messages: textMessages,
           stream: true,
           temperature: globalSettings.temperature,
-          max_tokens: isLiveMode ? 1024 : 8192,
+          max_tokens: tokenLimit,
           top_p: globalSettings.topP,
         })
         usedModel = tryModel
@@ -251,10 +252,24 @@ export async function POST(req: Request) {
         const status = err?.status || err?.error?.status
         const msg = (err?.message || "").toLowerCase()
 
-        if (status === 404 || status === 400 || msg.includes("not found")) continue
-        if (status === 429 || msg.includes("rate_limit") || msg.includes("rate limit")) continue
+        // Handle TPM / Request too large / rate limit / model unavailable -> auto fallback to next model
+        if (
+          status === 413 ||
+          status === 400 ||
+          status === 404 ||
+          status === 429 ||
+          msg.includes("too large") ||
+          msg.includes("tokens per minute") ||
+          msg.includes("tpm") ||
+          msg.includes("rate limit") ||
+          msg.includes("not found")
+        ) {
+          console.warn(`[FYY-AI Fallback] ${tryModel} hit error (${status || msg}), falling back to next model...`)
+          continue
+        }
+
         if (status === 503 || msg.includes("overloaded")) {
-          await new Promise((r) => setTimeout(r, 600))
+          await new Promise((r) => setTimeout(r, 400))
           continue
         }
       }

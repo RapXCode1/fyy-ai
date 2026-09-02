@@ -133,6 +133,15 @@ export function formatBrandedError(rawError: string, modelId?: string): string {
     return `⚠️ ${currentModelName} sedang dalam pemeliharaan server **FYY-GROQ SYSTEM INTELLIGENCE**. Silakan beralih ke model lain di menu Model.`
   }
 
+  if (
+    text.toLowerCase().includes("tokens per minute") ||
+    text.toLowerCase().includes("too large") ||
+    text.toLowerCase().includes("tpm") ||
+    text.includes("413")
+  ) {
+    return `⏳ Server **FYY-GROQ SYSTEM INTELLIGENCE** sedang mengalami antrean token tinggi. Silakan kirim ulang pesanmu dalam beberapa detik, atau pilih model **FYY-Llama 3.1 Fast** untuk inferensi instan.`
+  }
+
   if (text.toLowerCase().includes("rate limit") || text.includes("429")) {
     return `⏳ Batas frekuensi permintaan (rate limit) tercapai di server **FYY-GROQ SYSTEM INTELLIGENCE**. Mohon tunggu beberapa detik.`
   }
